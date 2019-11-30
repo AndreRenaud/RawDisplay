@@ -5,9 +5,13 @@
 #include "raw_display.h"
 
 /* If the configuration hasn't been specified, try and determine it */
-#define CONFIG_RAW_DISPLAY 1 /* FIXME: Make it an enum? */
-//#ifndef CONFIG_RAW_DISPLAY
-//#ifdef __linux__
+#ifndef CONFIG_RAW_DISPLAY
+# if __APPLE__ == 1
+#  define CONFIG_RAW_DISPLAY 4
+# elif __LINUX__ == 1
+#  define CONFIG_RAW_DISPLAY 1
+# endif
+#endif
 
 #if CONFIG_RAW_DISPLAY == 1 /** XCB **/
 #include <xcb/xcb.h>
@@ -188,4 +192,158 @@ bool raw_display_process_event(struct raw_display *rd,
 #elif CONFIG_RAW_DISPLAY == 2 /** Linux FBCon **/
 #elif CONFIG_RAW_DISPLAY == 3 /** Windows GDI? **/
 #elif CONFIG_RAW_DISPLAY == 4 /** OS-X **/
+
+#import <Cocoa/Cocoa.h>
+
+
+
+@interface DemoView : NSView    // interface of DemoView class
+{                               // (subclass of NSView class)
+}
+- (void)drawRect:(NSRect)rect;  // instance method interface
+@end
+
+@implementation DemoView        // implementation of DemoView class
+
+#define X(t) (sin(t)+1) * width * 0.5     // macro for X(t)
+#define Y(t) (cos(t)+1) * height * 0.5    // macro for Y(t)
+
+- (void)drawRect:(NSRect)rect   // instance method implementation
+{
+    double f,g;
+    double const pi = 2 * acos(0.0);
+
+    int n = 12;                 // number of sides of the polygon
+
+    // get the size of the application's window and view objects
+    float width  = [self bounds].size.width;
+    float height = [self bounds].size.height;
+
+    [[NSColor whiteColor] set];   // set the drawing color to white
+    NSRectFill([self bounds]);    // fill the view with white
+
+    // the following statements trace two polygons with n sides
+    // and connect all of the vertices with lines
+
+    [[NSColor blackColor] set];   // set the drawing color to black
+
+    for (f=0; f<2*pi; f+=2*pi/n) {        // draw the fancy pattern
+        for (g=0; g<2*pi; g+=2*pi/n) {
+            NSPoint p1 = NSMakePoint(X(f),Y(f));
+            NSPoint p2 = NSMakePoint(X(g),Y(g));
+            [NSBezierPath strokeLineFromPoint:p1 toPoint:p2];
+        }
+    }
+
+} // end of drawRect: override method
+
+@end
+
+#define FRAME_COUNT 3
+struct raw_display {
+    NSWindow *window;
+    NSView *view;
+    int width;
+    int height;
+    int bpp;
+    int stride;
+    int cur_frame;
+    uint8_t *frames[FRAME_COUNT];
+};
+
+struct raw_display *raw_display_init(int width, int height)
+{
+    //NSScreen* screen = [NSScreen mainScreen];
+    //NSDictionary* screenDictionary = [screen deviceDescription];
+    //NSNumber* screenID = [screenDictionary objectForKey:@"NSScreenNumber"];
+    //CGDirectDisplayID aID = [screenID unsignedIntValue];     
+    //NSLog(@"Screen number is%@ builtin", CGDisplayIsBuiltin(aID)? @"": @" not");
+
+    struct raw_display *rd;
+
+    rd = calloc(sizeof(*rd), 1);
+    if (!rd)
+        return NULL;
+
+    // create the autorelease pool
+    //NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // create the application object 
+    NSApp = [NSApplication sharedApplication];
+
+    rd->width = width;
+    rd->height = height;
+    rd->stride = width * 4;
+    rd->bpp = 32;
+
+    NSRect frame = NSMakeRect(0, 0, width, height);
+    rd->window  = [[[NSWindow alloc] initWithContentRect:frame
+                    styleMask:NSWindowStyleMaskClosable
+                             |NSWindowStyleMaskTitled
+                     //styleMask:NSTitledWindowMask 
+                                  //|NSClosableWindowMask 
+                                  //|NSMiniaturizableWindowMask
+                    backing:NSBackingStoreBuffered
+                    defer:NO] autorelease];
+    [rd->window setTitle:@"Tiny Application Window"];
+    //[rd->window setBackgroundColor:[NSColor blueColor]];
+
+     // create amd initialize the DemoView instance
+    rd->view = [[[DemoView alloc] initWithFrame:frame] autorelease];
+
+    [rd->window setContentView:rd->view ];    // set window's view
+
+    //[rd->window setDelegate:rd->view ];       // set window's delegate
+
+    [rd->window makeKeyAndOrderFront:NSApp];
+
+    for (int i = 0; i < FRAME_COUNT; i++) {
+        rd->frames[i] = calloc(rd->height, rd->stride);
+    }
+
+    //[NSApp run];
+
+    return rd;
+}
+
+void raw_display_info(struct raw_display *rd, int *width, int *height, int *bpp, int *stride)
+{
+    if (width) *width = rd->width;
+    if (height) *height = rd->height;
+    if (bpp) *bpp = rd->bpp;
+    if (stride) *stride = rd->stride;
+}
+
+uint8_t *raw_display_get_frame(struct raw_display *rd)
+{
+    return rd->frames[rd->cur_frame];
+}
+
+bool raw_display_process_event(struct raw_display *rd, struct raw_display_event *event)
+{
+    NSEvent *nevent = [NSApp nextEventMatchingMask:NSEventMaskAny
+                                        untilDate:[NSDate distantPast]
+                                           inMode:NSDefaultRunLoopMode
+                                          dequeue:YES];
+    if (!nevent)
+        return false;
+    printf("type: %lu\n", (unsigned long)[nevent type]);
+    //switch ([nevent type]) {
+
+    //}
+    [NSApp sendEvent:nevent];
+
+    return true;
+}
+
+void raw_display_flip(struct raw_display *rd)
+{
+
+}
+
+void raw_display_shutdown(struct raw_display *rd)
+{
+
+}
+
 #endif
