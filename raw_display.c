@@ -8,7 +8,7 @@
 #ifndef CONFIG_RAW_DISPLAY
 # if __APPLE__ == 1
 #  define CONFIG_RAW_DISPLAY 4
-# elif __LINUX__ == 1
+# elif __linux__ == 1
 #  define CONFIG_RAW_DISPLAY 1
 # endif
 #endif
@@ -345,5 +345,6 @@ void raw_display_shutdown(struct raw_display *rd)
 {
 
 }
-
+#else
+#error "Unable to determine CONFIG_RAW_DISPLAY"
 #endif
