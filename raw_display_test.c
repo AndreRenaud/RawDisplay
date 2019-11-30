@@ -13,8 +13,10 @@ int main(int argc, char **argv)
 	printf("raw display test\n");
 
 	rd = raw_display_init(800, 600);
-	if (!rd)
+	if (!rd) {
+		fprintf(stderr, "Unable to open display\n");
 		return -1;
+	}
 	int width, height, bpp, stride;
 	raw_display_info(rd, &width, &height, &bpp, &stride);
 	printf("Info: %dx%d@%d (stride=%d)\n", width, height, bpp, stride);
