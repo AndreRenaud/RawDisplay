@@ -9,5 +9,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
+    - name: Install xcb libraries
+      run: sudo apt-get install libxcb-image0-dev libxcb-icccm4-dev libxcb1-dev
     - name: make
       run: make
