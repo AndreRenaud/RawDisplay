@@ -37,7 +37,7 @@ struct raw_display {
     int cur_frame;
 };
 
-struct raw_display *raw_display_init(int width, int height)
+struct raw_display *raw_display_init(const char *title, int width, int height)
 {
     struct raw_display *rd = calloc(sizeof *rd, 1);
     uint32_t values[2];
@@ -195,63 +195,62 @@ bool raw_display_process_event(struct raw_display *rd,
 
 #import <Cocoa/Cocoa.h>
 
-
-
-@interface DemoView : NSView    // interface of DemoView class
-{                               // (subclass of NSView class)
-}
-- (void)drawRect:(NSRect)rect;  // instance method interface
-@end
-
-@implementation DemoView        // implementation of DemoView class
-
-#define X(t) (sin(t)+1) * width * 0.5     // macro for X(t)
-#define Y(t) (cos(t)+1) * height * 0.5    // macro for Y(t)
-
-- (void)drawRect:(NSRect)rect   // instance method implementation
-{
-    double f,g;
-    double const pi = 2 * acos(0.0);
-
-    int n = 12;                 // number of sides of the polygon
-
-    // get the size of the application's window and view objects
-    float width  = [self bounds].size.width;
-    float height = [self bounds].size.height;
-
-    [[NSColor whiteColor] set];   // set the drawing color to white
-    NSRectFill([self bounds]);    // fill the view with white
-
-    // the following statements trace two polygons with n sides
-    // and connect all of the vertices with lines
-
-    [[NSColor blackColor] set];   // set the drawing color to black
-
-    for (f=0; f<2*pi; f+=2*pi/n) {        // draw the fancy pattern
-        for (g=0; g<2*pi; g+=2*pi/n) {
-            NSPoint p1 = NSMakePoint(X(f),Y(f));
-            NSPoint p2 = NSMakePoint(X(g),Y(g));
-            [NSBezierPath strokeLineFromPoint:p1 toPoint:p2];
-        }
-    }
-
-} // end of drawRect: override method
-
-@end
-
 #define FRAME_COUNT 3
 struct raw_display {
+    NSApplication *nsapp;
     NSWindow *window;
     NSView *view;
+    //NSGraphicsContext *context;
     int width;
     int height;
     int bpp;
     int stride;
     int cur_frame;
     uint8_t *frames[FRAME_COUNT];
+    CGImageRef image_ref[FRAME_COUNT];
 };
 
-struct raw_display *raw_display_init(int width, int height)
+@interface RawView : NSView
+{
+}
+- (void)drawRect:(NSRect)rect;  // instance method interface
+@end
+
+@implementation RawView
+
+static struct raw_display *rd_global = NULL;
+
+- (void)drawRect:(NSRect)rect
+{
+    int size = rd_global->stride * rd_global->height;
+    int frame = (rd_global->cur_frame - 1 + FRAME_COUNT) % FRAME_COUNT;
+    NSGraphicsContext *ctx = [NSGraphicsContext currentContext];
+    //CGContextRef ctx = [NSGraphicsContext currentContext];
+
+    printf("drawRect Frame %d\n", frame);
+    // Create a CGImage with the pixel data
+    CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
+    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, rd_global->frames[frame], size, NULL);
+    CGImageRef image = CGImageCreate(rd_global->width, rd_global->height, 8, 32, rd_global->stride, colorspace, kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast,
+
+                            provider, NULL, true, kCGRenderingIntentDefault);
+
+    //CGContextRef context = UIGraphicsGetCurrentContext();
+
+    //CGRect renderRect = CGRectMake(0., 0., rd_global->width, rd_global->height);
+    //CGContextRef context = CGBitmapContextCreate(rd_global->frames[frame], rd_global->width, rd_global->height, 
+        //8, rd_global->stride, colorspace,  kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast);
+
+    CGContextDrawImage((CGContextRef)ctx, rect, image); //rd_global->image_ref[frame]);
+    CGImageRelease(image);
+
+    //Clean up
+    CGColorSpaceRelease(colorspace);
+    CGDataProviderRelease(provider);
+}
+@end
+
+struct raw_display *raw_display_init(const char *title, int width, int height)
 {
     //NSScreen* screen = [NSScreen mainScreen];
     //NSDictionary* screenDictionary = [screen deviceDescription];
@@ -265,11 +264,13 @@ struct raw_display *raw_display_init(int width, int height)
     if (!rd)
         return NULL;
 
+    rd_global = rd;
+
     // create the autorelease pool
     //NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     // create the application object 
-    NSApp = [NSApplication sharedApplication];
+    rd->nsapp = [NSApplication sharedApplication];
 
     rd->width = width;
     rd->height = height;
@@ -280,16 +281,13 @@ struct raw_display *raw_display_init(int width, int height)
     rd->window  = [[[NSWindow alloc] initWithContentRect:frame
                     styleMask:NSWindowStyleMaskClosable
                              |NSWindowStyleMaskTitled
-                     //styleMask:NSTitledWindowMask 
-                                  //|NSClosableWindowMask 
-                                  //|NSMiniaturizableWindowMask
                     backing:NSBackingStoreBuffered
                     defer:NO] autorelease];
-    [rd->window setTitle:@"Tiny Application Window"];
+    NSString *nstitle = [[NSString alloc] initWithUTF8String:title];
+    [rd->window setTitle:nstitle];
     //[rd->window setBackgroundColor:[NSColor blueColor]];
 
-     // create amd initialize the DemoView instance
-    rd->view = [[[DemoView alloc] initWithFrame:frame] autorelease];
+    rd->view = [[[RawView alloc] initWithFrame:frame] autorelease];
 
     [rd->window setContentView:rd->view ];    // set window's view
 
@@ -297,8 +295,15 @@ struct raw_display *raw_display_init(int width, int height)
 
     [rd->window makeKeyAndOrderFront:NSApp];
 
+    //rd->context = [[NSGraphicsContext alloc] init:rd->window];
+
     for (int i = 0; i < FRAME_COUNT; i++) {
         rd->frames[i] = calloc(rd->height, rd->stride);
+        CGDataProviderRef provider = 
+            CGDataProviderCreateWithData(NULL, rd->frames[i], rd->height * rd->stride, NULL);
+
+        rd->image_ref[i] = CGImageCreate(rd->width, rd->height, 32, 8, rd->stride, CGColorSpaceCreateDeviceRGB(), kCGBitmapByteOrderDefault | kCGImageAlphaLast, provider, NULL, false, kCGRenderingIntentDefault);
+
     }
 
     //[NSApp run];
@@ -331,13 +336,17 @@ bool raw_display_process_event(struct raw_display *rd, struct raw_display_event 
     //switch ([nevent type]) {
 
     //}
-    [NSApp sendEvent:nevent];
+    [rd->nsapp sendEvent:nevent];
 
     return true;
 }
 
 void raw_display_flip(struct raw_display *rd)
 {
+    rd->cur_frame = (rd->cur_frame + 1) % FRAME_COUNT;
+    [rd->view display];
+    //[rd->view setHidden:YES];
+    //[rd->view setNeedsDisplay:YES];
 
 }
 

@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 
 	printf("raw display test\n");
 
-	rd = raw_display_init(800, 600);
+	rd = raw_display_init("Demo app", 800, 600);
 	if (!rd) {
 		fprintf(stderr, "Unable to open display\n");
 		return -1;
