@@ -62,7 +62,8 @@ int main(int argc, char **argv)
 				uint32_t *pos = (uint32_t *)(frame + y * stride + x * bpp / 8);
 				uint8_t green = ((float)y) / height * 256;
 				uint8_t red = ((float)x) / width * 256;
-				*pos = 0xff000000 | green << 8 | red;
+				uint8_t blue = (i * 10) & 0xff;
+				*pos = 0xff000000 | blue << 16 | green << 8 | red;
 			}
 		}
 
