@@ -200,14 +200,12 @@ struct raw_display {
     NSApplication *nsapp;
     NSWindow *window;
     NSView *view;
-    //NSGraphicsContext *context;
     int width;
     int height;
     int bpp;
     int stride;
     int cur_frame;
     uint8_t *frames[FRAME_COUNT];
-    CGImageRef image_ref[FRAME_COUNT];
 };
 
 @interface RawView : NSView
@@ -225,26 +223,18 @@ static struct raw_display *rd_global = NULL;
     int size = rd_global->stride * rd_global->height;
     int frame = (rd_global->cur_frame - 1 + FRAME_COUNT) % FRAME_COUNT;
     CGContextRef ctx = NSGraphicsContext.currentContext.CGContext;
-    //CGContextRef ctx = [NSGraphicsContext currentContext];
 
     printf("drawRect Frame %d\n", frame);
-    // Create a CGImage with the pixel data
     CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
     CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, rd_global->frames[frame], size, NULL);
-    CGImageRef image = CGImageCreate(rd_global->width, rd_global->height, 8, 32, rd_global->stride, colorspace, kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast,
+    CGImageRef image = CGImageCreate(rd_global->width, rd_global->height, 8, 32, 
+        rd_global->stride, colorspace, kCGBitmapByteOrder32Little | kCGImageAlphaNoneSkipFirst,
+        provider, NULL, true, kCGRenderingIntentDefault);
 
-                            provider, NULL, true, kCGRenderingIntentDefault);
-
-    //CGContextRef context = UIGraphicsGetCurrentContext();
-
-    //CGRect renderRect = CGRectMake(0., 0., rd_global->width, rd_global->height);
-    //CGContextRef context = CGBitmapContextCreate(rd_global->frames[frame], rd_global->width, rd_global->height, 
-        //8, rd_global->stride, colorspace,  kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast);
-
-    CGContextDrawImage(ctx, rect, image); //rd_global->image_ref[frame]);
-    CGImageRelease(image);
+    CGContextDrawImage(ctx, rect, image);
 
     //Clean up
+    CGImageRelease(image);
     CGColorSpaceRelease(colorspace);
     CGDataProviderRelease(provider);
 }
@@ -252,12 +242,6 @@ static struct raw_display *rd_global = NULL;
 
 struct raw_display *raw_display_init(const char *title, int width, int height)
 {
-    //NSScreen* screen = [NSScreen mainScreen];
-    //NSDictionary* screenDictionary = [screen deviceDescription];
-    //NSNumber* screenID = [screenDictionary objectForKey:@"NSScreenNumber"];
-    //CGDirectDisplayID aID = [screenID unsignedIntValue];     
-    //NSLog(@"Screen number is%@ builtin", CGDisplayIsBuiltin(aID)? @"": @" not");
-
     struct raw_display *rd;
 
     rd = calloc(sizeof(*rd), 1);
@@ -265,9 +249,6 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
         return NULL;
 
     rd_global = rd;
-
-    // create the autorelease pool
-    //NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     // create the application object 
     rd->nsapp = [NSApplication sharedApplication];
@@ -285,25 +266,15 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
                     defer:NO] autorelease];
     NSString *nstitle = [[NSString alloc] initWithUTF8String:title];
     [rd->window setTitle:nstitle];
-    //[rd->window setBackgroundColor:[NSColor blueColor]];
 
     rd->view = [[[RawView alloc] initWithFrame:frame] autorelease];
 
-    [rd->window setContentView:rd->view ];    // set window's view
-
-    //[rd->window setDelegate:rd->view ];       // set window's delegate
+    [rd->window setContentView:rd->view ];
 
     [rd->window makeKeyAndOrderFront:NSApp];
 
-    //rd->context = [[NSGraphicsContext alloc] init:rd->window];
-
     for (int i = 0; i < FRAME_COUNT; i++) {
         rd->frames[i] = calloc(rd->height, rd->stride);
-        CGDataProviderRef provider = 
-            CGDataProviderCreateWithData(NULL, rd->frames[i], rd->height * rd->stride, NULL);
-
-        rd->image_ref[i] = CGImageCreate(rd->width, rd->height, 32, 8, rd->stride, CGColorSpaceCreateDeviceRGB(), kCGBitmapByteOrderDefault | kCGImageAlphaLast, provider, NULL, false, kCGRenderingIntentDefault);
-
     }
 
     //[NSApp run];
@@ -345,8 +316,6 @@ void raw_display_flip(struct raw_display *rd)
 {
     rd->cur_frame = (rd->cur_frame + 1) % FRAME_COUNT;
     [rd->view display];
-    //[rd->view setHidden:YES];
-    //[rd->view setNeedsDisplay:YES];
 
 }
 
