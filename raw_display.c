@@ -224,7 +224,7 @@ static struct raw_display *rd_global = NULL;
 {
     int size = rd_global->stride * rd_global->height;
     int frame = (rd_global->cur_frame - 1 + FRAME_COUNT) % FRAME_COUNT;
-    NSGraphicsContext *ctx = [NSGraphicsContext currentContext];
+    CGContextRef ctx = NSGraphicsContext.currentContext.CGContext;
     //CGContextRef ctx = [NSGraphicsContext currentContext];
 
     printf("drawRect Frame %d\n", frame);
@@ -241,7 +241,7 @@ static struct raw_display *rd_global = NULL;
     //CGContextRef context = CGBitmapContextCreate(rd_global->frames[frame], rd_global->width, rd_global->height, 
         //8, rd_global->stride, colorspace,  kCGBitmapByteOrder32Big | kCGImageAlphaPremultipliedLast);
 
-    CGContextDrawImage((CGContextRef)ctx, rect, image); //rd_global->image_ref[frame]);
+    CGContextDrawImage(ctx, rect, image); //rd_global->image_ref[frame]);
     CGImageRelease(image);
 
     //Clean up
