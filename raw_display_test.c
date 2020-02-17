@@ -7,6 +7,10 @@
 
 #include "raw_display.h"
 
+#ifndef M_PI
+#define M_PI   3.14159265358979323846264338327950288
+#endif
+
 static void draw_clock(struct raw_display *rd, int x, int y, int radius)
 {
 	uint32_t colour = 0xffffff00;
@@ -14,18 +18,18 @@ static void draw_clock(struct raw_display *rd, int x, int y, int radius)
 	raw_display_draw_circle(rd, x, y, radius, colour, 5);
 
 	// Draw the hours hand
-	struct tm tm;
+	struct tm *tm;
 	time_t now = time(NULL);
-	gmtime_r(&now, &tm);
+	tm = gmtime(&now);
 	int hour_len = radius * 6 / 10;
 
-	int hour_y = sin(tm.tm_hour * M_PI / 12) * hour_len;
-	int hour_x = cos(tm.tm_hour * M_PI / 12) * hour_len;
+	int hour_y = sin(tm->tm_hour * M_PI / 12) * hour_len;
+	int hour_x = cos(tm->tm_hour * M_PI / 12) * hour_len;
 	raw_display_draw_line(rd, x, y, x + hour_x, y + hour_y, colour, 3);
 
 	int minute_len = radius * 9 / 10;
-	int minute_y = sin(tm.tm_sec * M_PI / 60) * minute_len;
-	int minute_x = cos(tm.tm_sec * M_PI / 60) * minute_len;
+	int minute_y = sin(tm->tm_sec * M_PI / 60) * minute_len;
+	int minute_x = cos(tm->tm_sec * M_PI / 60) * minute_len;
 	raw_display_draw_line(rd, x, y, x + minute_x, y + minute_y, colour, 3);
 }
 
