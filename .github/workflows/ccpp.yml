@@ -3,13 +3,27 @@ name: C/C++ CI
 on: [push]
 
 jobs:
-  build:
-
+  build-ubuntu:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v1
     - name: Install xcb libraries
       run: sudo apt-get install libxcb-image0-dev libxcb-icccm4-dev libxcb1-dev
+    - name: make
+      run: make
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: make
+      run: make
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v1
     - name: make
       run: make
