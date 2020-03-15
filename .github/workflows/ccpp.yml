@@ -18,8 +18,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: make CC=gcc
-      run: make
+    - name: make
+      run: make CC=gcc
 
   build-macos:
     runs-on: macos-latest
