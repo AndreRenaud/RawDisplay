@@ -13,6 +13,8 @@
 #  define CONFIG_RAW_DISPLAY 4
 # elif __linux__ == 1
 #  define CONFIG_RAW_DISPLAY 1
+# elif defined(_WIN32)
+#  define CONFIG_RAW_DISPLAY 3
 # endif
 #endif
 
@@ -193,7 +195,102 @@ bool raw_display_process_event(struct raw_display *rd,
 }
 
 #elif CONFIG_RAW_DISPLAY == 2 /** Linux FBCon **/
-#elif CONFIG_RAW_DISPLAY == 3 /** Windows GDI? **/
+#error "Raw Display mode 2 (Linux FBCon) not implemented"
+#elif CONFIG_RAW_DISPLAY == 3 /** Windows **/
+#include <windows.h>
+struct raw_display {
+    WNDCLASSEX wc;
+    HWND hwnd;
+    int width;
+    int height;
+};
+
+struct raw_display *raw_display_init(const char *title, int width, int height)
+{
+    struct raw_display *rd;
+
+    rd = calloc(sizeof(struct raw_display), 1);
+    if (!rd)
+        return NULL;
+
+    //Step 1: Registering the Window Class
+    rd->wc.cbSize        = sizeof(WNDCLASSEX);
+    rd->wc.style         = 0;
+    rd->wc.lpfnWndProc   = WndProc;
+    rd->wc.cbClsExtra    = 0;
+    rd->wc.cbWndExtra    = 0;
+    rd->wc.hInstance     = hInstance;
+    rd->wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
+    rd->wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+    rd->wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+    rd->wc.lpszMenuName  = NULL;
+    rd->wc.lpszClassName = g_szClassName;
+    rd->wc.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
+
+    if(!RegisterClassEx(&rd->wc)) {
+        free(rd);
+        return NULL;
+    }
+
+    // Step 2: Creating the Window
+    rd->hwnd = CreateWindowEx(
+        WS_EX_CLIENTEDGE,
+        g_szClassName,
+        title,
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, width, height,
+        NULL, NULL, hInstance, NULL);
+
+    if(hwnd == NULL) {
+        free(rd);
+        return NULL;
+    }
+
+    rd->width = width;
+    rd->height = height;
+
+    ShowWindow(rc->hwnd, SW_SHOWNORMAL);
+    UpdateWindow(rc->hwnd);
+
+    return rc;
+}
+
+void raw_display_info(struct raw_display *rd, int *width, int *height, int *bpp, int *stride)
+{
+    if (width) *width = rd->width;
+    if (height) *height = rd->height;
+    if (bpp) *bpp = 32;
+    if (stride) *stride = rd->width * 4;
+}
+
+uint8_t *raw_display_get_frame(struct raw_display *rd)
+{
+    /* TODO: Actually have blit data */
+    return NULL;
+}
+
+bool raw_display_process_event(struct raw_display *rd, struct raw_display_event *event)
+{
+    MSG Msg;
+
+    while(GetMessage(&Msg, NULL, 0, 0) > 0) {
+        TranslateMessage(&Msg);
+        DispatchMessage(&Msg);
+    }
+
+    return false;
+}
+
+void raw_display_flip(struct raw_display *rd)
+{
+    /* TODO: Actually do the flip */
+}
+
+void raw_display_shutdown(struct raw_display *rd)
+{
+    DestroyWindow(rc->hwnd);
+    free(rc);
+}
 #elif CONFIG_RAW_DISPLAY == 4 /** OS-X **/
 
 #import <Cocoa/Cocoa.h>
