@@ -18,7 +18,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: make
+    - name: make CC=gcc
       run: make
 
   build-macos:
