@@ -198,11 +198,16 @@ bool raw_display_process_event(struct raw_display *rd,
 #error "Raw Display mode 2 (Linux FBCon) not implemented"
 #elif CONFIG_RAW_DISPLAY == 3 /** Windows **/
 #include <windows.h>
+#define FRAME_COUNT 3
 struct raw_display {
     WNDCLASSEX wc;
     HWND hwnd;
     int width;
     int height;
+    int nframes;
+    uint8_t *frames[FRAME_COUNT];
+    HBITMAP bitmaps[FRAME_COUNT];
+    int cur_frame;
 };
 
 struct raw_display *raw_display_init(const char *title, int width, int height)
@@ -252,6 +257,17 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     ShowWindow(rc->hwnd, SW_SHOWNORMAL);
     UpdateWindow(rc->hwnd);
 
+    for (int i = 0; i < NFRAMES; i++) {
+        rd->frames[i] = calloc(width * height * 4);
+        if (!rd->frames[i]) {
+            for (int j = 0; j < i; j++)
+                free(rd->frames[j]);
+            free(rd);
+            return NULL;
+        }
+        rd->bitmaps[i] = CreateBitmap(width, height, 3, 32, rd->frames[i]);
+    }
+
     return rc;
 }
 
@@ -265,8 +281,7 @@ void raw_display_info(struct raw_display *rd, int *width, int *height, int *bpp,
 
 uint8_t *raw_display_get_frame(struct raw_display *rd)
 {
-    /* TODO: Actually have blit data */
-    return NULL;
+    return rd->frames[rd->cur_frame];
 }
 
 bool raw_display_process_event(struct raw_display *rd, struct raw_display_event *event)
@@ -283,7 +298,9 @@ bool raw_display_process_event(struct raw_display *rd, struct raw_display_event 
 
 void raw_display_flip(struct raw_display *rd)
 {
-    /* TODO: Actually do the flip */
+    /* TODO: Should be doing BitBlt on rd->cur_frame */
+    SelectObject()
+    rd->cur_frame = (rd->cur_frame + 1) % FRAME_COUNT;
 }
 
 void raw_display_shutdown(struct raw_display *rd)
