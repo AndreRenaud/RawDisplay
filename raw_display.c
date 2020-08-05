@@ -10,15 +10,15 @@
 /* If the configuration hasn't been specified, try and determine it */
 #ifndef CONFIG_RAW_DISPLAY
 # if __APPLE__ == 1
-#  define CONFIG_RAW_DISPLAY 4
+#  define CONFIG_RAW_DISPLAY RAW_DISPLAY_MODE_MACOS
 # elif __linux__ == 1
-#  define CONFIG_RAW_DISPLAY 1
+#  define CONFIG_RAW_DISPLAY RAW_DISPLAY_MODE_LINUX_XCB
 # elif defined(_WIN32)
-#  define CONFIG_RAW_DISPLAY 3
+#  define CONFIG_RAW_DISPLAY RAW_DISPLAY_MODE_WIN32
 # endif
 #endif
 
-#if CONFIG_RAW_DISPLAY == 1 /** XCB **/
+#if CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_LINUX_XCB
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_image.h>
@@ -194,9 +194,9 @@ bool raw_display_process_event(struct raw_display *rd,
     return false;
 }
 
-#elif CONFIG_RAW_DISPLAY == 2 /** Linux FBCon **/
+#elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_LINUX_FB
 #error "Raw Display mode 2 (Linux FBCon) not implemented"
-#elif CONFIG_RAW_DISPLAY == 3 /** Windows **/
+#elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_WIN32
 #include <windows.h>
 #define FRAME_COUNT 3
 struct raw_display {
@@ -308,7 +308,7 @@ void raw_display_shutdown(struct raw_display *rd)
     DestroyWindow(rc->hwnd);
     free(rc);
 }
-#elif CONFIG_RAW_DISPLAY == 4 /** OS-X **/
+#elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_MACOS
 
 #import <Cocoa/Cocoa.h>
 
@@ -696,7 +696,8 @@ void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1, int y
                 raw_display_set_pixel(rd, x0, y2, colour); // TODO: Antialiasing? -  max(0,255*(abs(e2)/ed-wd+1)));
                 y2 += sy;
             }
-            if (x0 == x1) break;
+            if (x0 == x1)
+                break;
             e2 = err; err -= dy; x0 += sx; 
         } 
         if (2*e2 <= dy) {                                            /* y step */
@@ -704,7 +705,8 @@ void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1, int y
                 raw_display_set_pixel(rd, x2, y0, colour); // TODO: Antialiasing? - max(0,255*(abs(e2)/ed-wd+1)));
                 x2 += sx;
             }
-            if (y0 == y1) break;
+            if (y0 == y1)
+                break;
             err += dx; y0 += sy; 
         }
     }
@@ -770,4 +772,14 @@ void raw_display_set_pixel(struct raw_display *rd, int x, int y, uint32_t colour
         return;
     uint8_t *rgb = raw_display_get_frame(rd);
     *(uint32_t *)(rgb + y * rd->stride + x * 4) = colour;
+}
+
+int raw_display_load_ppm(const char *ppm_file, int *width, int *height, uint8_t **data)
+{
+    return -ENOTSUP;
+}
+
+int raw_display_blit_rgb(struct raw_display *rd, int x, int y, const uint8_t *data, int data_width, int data_height)
+{
+    return -ENOTSUP;
 }

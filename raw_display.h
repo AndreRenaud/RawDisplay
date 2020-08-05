@@ -4,7 +4,19 @@
 /**
  * Raw Display provides a cross platform single RGB window display
  * It is designed for simplicity and low dependencies, not for performance
+ *
+ * raw_display.c attempts to autodetect the appropriate platform to compile for
+ * but if this fails the platform can be force via the CONFIG_RAW_DISPLAY macro
+ *  - 1 will select the Linux/X11 xcb implementation
+ *  - 2 will select the Linux/Framebuffer implementation
+ *  - 3 will select the Win32 implementation
+ *  - 4 will select the MacOS/Cocoa implementation
  */
+
+#define RAW_DISPLAY_MODE_LINUX_XCB 1
+#define RAW_DISPLAY_MODE_LINUX_FB  2
+#define RAW_DISPLAY_MODE_WIN32     3
+#define RAW_DISPLAY_MODE_MACOS     4
 
 #include <stdint.h>
 #include <stdbool.h>
