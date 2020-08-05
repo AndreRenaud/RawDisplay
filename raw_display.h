@@ -25,8 +25,10 @@
 struct raw_display;
 
 enum raw_display_event_type {
+    RAW_DISPLAY_EVENT_unknown,
     RAW_DISPLAY_EVENT_key,
-    RAW_DISPLAY_EVENT_mouse,
+    RAW_DISPLAY_EVENT_mouse_down,
+    RAW_DISPLAY_EVENT_mouse_up,
     RAW_DISPLAY_EVENT_quit,
 };
 
@@ -36,6 +38,7 @@ struct raw_display_event {
         struct {
             int x;
             int y;
+            int button;
         } mouse;
         struct {
             int key;

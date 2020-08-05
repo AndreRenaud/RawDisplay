@@ -1,8 +1,13 @@
 # Raw Display #
 Raw display provides a minimal raw display buffer for doing simple interfaces.
+It runs on Windows, MacOS and Linux (X11 & Framebuffer), with the goal of being
+used for simple graphical interfaces to tests/simulations.
 
-It is designed for ease of use, not performance.
-The API/feature set is deliberately minimal.
+It is designed for ease of use, not performance, so the API/feature set
+is deliberately minimal.
+
+For large/complex applications it is probably better to use something like
+[SDL](https://libsdl.org/).
 
 ## Features ##
  * Cross platform (Windows, macOS, Linux)

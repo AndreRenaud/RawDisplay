@@ -429,10 +429,27 @@ bool raw_display_process_event(struct raw_display *rd,
                                            dequeue:YES];
     if (!nevent)
         return false;
-    printf("type: %lu\n", (unsigned long)[nevent type]);
-    // switch ([nevent type]) {
+    memset(event, 0, sizeof(*event));
+    printf("event type: %lu %lu\n", (unsigned long)[nevent type],
+           NSEventTypeLeftMouseDown);
+    switch ([nevent type]) {
+    case NSEventTypeLeftMouseDown:
+        event->type = RAW_DISPLAY_EVENT_mouse_down;
+        event->mouse.button = 0;
+        event->mouse.x = -1;
+        event->mouse.y = -1;
+        break;
 
-    //}
+    case NSEventTypeLeftMouseUp:
+        event->type = RAW_DISPLAY_EVENT_mouse_down;
+        event->mouse.button = 0;
+        event->mouse.x = -1;
+        event->mouse.y = -1;
+        break;
+    default:
+        event->type = RAW_DISPLAY_EVENT_unknown;
+        break;
+    }
     [rd->nsapp sendEvent:nevent];
 
     return true;
@@ -682,13 +699,11 @@ void raw_display_draw_rectangle(struct raw_display *rd, int x0, int y0,
     if (y0 < 0)
         y0 = 0;
 
-    if (border_width < 0) {
-        uint8_t *rgb = raw_display_get_frame(rd);
-        rgb += y0 * rd->stride;
-        for (; y0 <= y1; y0++) {
-            memset32((uint32_t *)(rgb + x0 * 4), colour, x1 - x0 + 1);
-            rgb += rd->stride;
-        }
+    uint8_t *rgb = raw_display_get_frame(rd);
+    rgb += y0 * rd->stride;
+    for (; y0 <= y1; y0++) {
+        memset32((uint32_t *)(rgb + x0 * 4), colour, x1 - x0 + 1);
+        rgb += rd->stride;
     }
 }
 
@@ -714,9 +729,8 @@ void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1,
         if (2 * e2 >= -dx) { /* x step */
             for (e2 += dy, y2 = y0; e2 < ed * wd && (y1 != y2 || dx > dy);
                  e2 += dx) {
-                raw_display_set_pixel(
-                    rd, x0, y2, colour); // TODO: Antialiasing? -
-                                         // max(0,255*(abs(e2)/ed-wd+1)));
+                // TODO: Antialiasing? - max(0,255*(abs(e2)/ed-wd+1)));
+                raw_display_set_pixel(rd, x0, y2, colour);
                 y2 += sy;
             }
             if (x0 == x1)
@@ -728,9 +742,8 @@ void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1,
         if (2 * e2 <= dy) { /* y step */
             for (e2 = dx - e2; e2 < ed * wd && (x1 != x2 || dx < dy);
                  e2 += dy) {
-                raw_display_set_pixel(
-                    rd, x2, y0, colour); // TODO: Antialiasing? -
-                                         // max(0,255*(abs(e2)/ed-wd+1)));
+                // TODO: Antialiasing? - max(0,255*(abs(e2)/ed-wd+1)));
+                raw_display_set_pixel(rd, x2, y0, colour);
                 x2 += sx;
             }
             if (y0 == y1)
