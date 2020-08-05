@@ -5,8 +5,9 @@
  * Raw Display provides a cross platform single RGB window display
  * It is designed for simplicity and low dependencies, not for performance
  *
- * raw_display.c attempts to autodetect the appropriate platform to compile for
- * but if this fails the platform can be force via the CONFIG_RAW_DISPLAY macro
+ * raw_display.c attempts to autodetect the appropriate platform to compile
+ * for but if this fails the platform can be force via the CONFIG_RAW_DISPLAY
+ * macro
  *  - 1 will select the Linux/X11 xcb implementation
  *  - 2 will select the Linux/Framebuffer implementation
  *  - 3 will select the Win32 implementation
@@ -14,32 +15,32 @@
  */
 
 #define RAW_DISPLAY_MODE_LINUX_XCB 1
-#define RAW_DISPLAY_MODE_LINUX_FB  2
-#define RAW_DISPLAY_MODE_WIN32     3
-#define RAW_DISPLAY_MODE_MACOS     4
+#define RAW_DISPLAY_MODE_LINUX_FB 2
+#define RAW_DISPLAY_MODE_WIN32 3
+#define RAW_DISPLAY_MODE_MACOS 4
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 struct raw_display;
 
 enum raw_display_event_type {
-	RAW_DISPLAY_EVENT_key,
-	RAW_DISPLAY_EVENT_mouse,
-	RAW_DISPLAY_EVENT_quit,
+    RAW_DISPLAY_EVENT_key,
+    RAW_DISPLAY_EVENT_mouse,
+    RAW_DISPLAY_EVENT_quit,
 };
 
 struct raw_display_event {
-	enum raw_display_event_type type;
-	union {
-		struct {
-			int x;
-			int y;
-		} mouse;
-		struct {
-			int key;
-		} key;
-	};
+    enum raw_display_event_type type;
+    union {
+        struct {
+            int x;
+            int y;
+        } mouse;
+        struct {
+            int key;
+        } key;
+    };
 };
 
 /**
@@ -50,7 +51,8 @@ struct raw_display_event {
  * @param height Height in pixels of the window
  * @return raw_display structure on success, NULL on failure
  */
-struct raw_display *raw_display_init(const char *title, int width, int height);
+struct raw_display *raw_display_init(const char *title, int width,
+                                     int height);
 
 /**
  * Determine the characteristics of the raw display
@@ -60,7 +62,8 @@ struct raw_display *raw_display_init(const char *title, int width, int height);
  * @param bpp Area to store the bits-per-pixel of the display
  * @param stride Area to store the stride in bytes of the display
  */
-void raw_display_info(struct raw_display *rd, int *width, int *height, int *bpp, int *stride);
+void raw_display_info(struct raw_display *rd, int *width, int *height,
+                      int *bpp, int *stride);
 
 /**
  * Retrieve the currently available off-screen bitmap of the display
@@ -71,12 +74,14 @@ uint8_t *raw_display_get_frame(struct raw_display *rd);
 
 /**
  * Process a single event from the display system
- * This should be called on every frame, in a loop until it returns false (or a certain amount of time has elapsed)
+ * This should be called on every frame, in a loop until it returns false (or
+ * a certain amount of time has elapsed)
  * @param rd Raw display structure to process
  * @param event Area to store information about the incoming event
  * @return true if there is an event to process, false if there are none
  */
-bool raw_display_process_event(struct raw_display *rd, struct raw_display_event *event);
+bool raw_display_process_event(struct raw_display *rd,
+                               struct raw_display_event *event);
 
 /**
  * Flip the current off-screen frame (@ref raw_display_get_frame)
@@ -92,7 +97,6 @@ void raw_display_flip(struct raw_display *rd);
  */
 void raw_display_shutdown(struct raw_display *rd);
 
-
 /**
  * Displays an ASCII string on the screen.
  * Note: Only ASCII characters 0 - 127 are supported
@@ -103,7 +107,8 @@ void raw_display_shutdown(struct raw_display *rd);
  * @param colour Colour to draw the string as
  * @return < 0 on failure, >= 0 on success
  */
-int raw_display_draw_string(struct raw_display *rd, int x, int y, char *string, uint32_t colour);
+int raw_display_draw_string(struct raw_display *rd, int x, int y,
+                            char *string, uint32_t colour);
 
 /**
  * Draw a rectangle on the screen
@@ -113,9 +118,12 @@ int raw_display_draw_string(struct raw_display *rd, int x, int y, char *string, 
  * @param x1 pixel offset of the right of the rectangle
  * @param y1 Pixel offset of the bottom of the rectangle
  * @param colour Colour to draw the rectangle
- * @param border_width How many pixels wide should the rectangle be drawn. -1 to entirly fill the rectangle
+ * @param border_width How many pixels wide should the rectangle be drawn. -1
+ * to entirly fill the rectangle
  */
-void raw_display_draw_rectangle(struct raw_display *rd, int x0, int y0, int x1, int y1, uint32_t colour, int border_width);
+void raw_display_draw_rectangle(struct raw_display *rd, int x0, int y0,
+                                int x1, int y1, uint32_t colour,
+                                int border_width);
 
 /**
  * Draw a line between two points on the display
@@ -127,7 +135,8 @@ void raw_display_draw_rectangle(struct raw_display *rd, int x0, int y0, int x1, 
  * @param colour Colour to draw the line
  * @param line_width How many pixels wide to draw the line
  */
-void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1, int y1, uint32_t colour, int line_width);
+void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1,
+                           int y1, uint32_t colour, int line_width);
 
 /**
  * Draw a circle on the display
@@ -138,7 +147,8 @@ void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1, int y
  * @param colour Colour to draw the circle
  * @param border_width How many pixels wide to draw the circle
  */
-void raw_display_draw_circle(struct raw_display *rd, int xc, int yc, int radius, uint32_t colour, int border_width);
+void raw_display_draw_circle(struct raw_display *rd, int xc, int yc,
+                             int radius, uint32_t colour, int border_width);
 
 /**
  * Set a single pixel on the display
@@ -147,6 +157,7 @@ void raw_display_draw_circle(struct raw_display *rd, int xc, int yc, int radius,
  * @param y Y offset of the pixel to set
  * @param colour Colour to set the pixel
  */
-void raw_display_set_pixel(struct raw_display *rd, int x, int y, uint32_t colour);
+void raw_display_set_pixel(struct raw_display *rd, int x, int y,
+                           uint32_t colour);
 
 #endif /* RAW_DISPLAY_H */
