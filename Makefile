@@ -16,5 +16,11 @@ raw_display_test: raw_display.o raw_display_test.o
 %.o: %.c raw_display.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+format:
+	clang-format -i raw_display.c
+	clang-format -i raw_display.h
+
 clean:
 	rm *.o raw_display_test
+
+.PHONY: format clean
