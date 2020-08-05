@@ -397,8 +397,6 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
         rd->frames[i] = calloc(rd->height, rd->stride);
     }
 
-    //[NSApp run];
-
     return rd;
 }
 
@@ -430,23 +428,33 @@ bool raw_display_process_event(struct raw_display *rd,
     if (!nevent)
         return false;
     memset(event, 0, sizeof(*event));
-    printf("event type: %lu %lu\n", (unsigned long)[nevent type],
-           NSEventTypeLeftMouseDown);
+    // NSEventTypeLeftMouseDown);
     switch ([nevent type]) {
-    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseDown: {
+        NSPoint location = [nevent locationInWindow];
         event->type = RAW_DISPLAY_EVENT_mouse_down;
         event->mouse.button = 0;
-        event->mouse.x = -1;
-        event->mouse.y = -1;
+        event->mouse.x = location.x;
+        event->mouse.y = rd->height - location.y;
+        // If the click is in the title bar, just ignore it
+        if (event->mouse.y < 0)
+            event->type = RAW_DISPLAY_EVENT_unknown;
         break;
+    }
 
-    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseUp: {
+        NSPoint location = [nevent locationInWindow];
         event->type = RAW_DISPLAY_EVENT_mouse_down;
         event->mouse.button = 0;
-        event->mouse.x = -1;
-        event->mouse.y = -1;
+        event->mouse.x = location.x;
+        event->mouse.y = rd->height - location.y;
+        // If the click is in the title bar, just ignore it
+        if (event->mouse.y < 0)
+            event->type = RAW_DISPLAY_EVENT_unknown;
         break;
+    }
     default:
+        printf("unhandled event type: %lu\n", (unsigned long)[nevent type]);
         event->type = RAW_DISPLAY_EVENT_unknown;
         break;
     }
@@ -463,6 +471,12 @@ void raw_display_flip(struct raw_display *rd)
 
 void raw_display_shutdown(struct raw_display *rd)
 {
+    if (!rd)
+        return;
+    for (int i = 0; i < FRAME_COUNT; i++) {
+        free(rd->frames[i]);
+    }
+    free(rd);
 }
 #else
 #error "Unable to determine CONFIG_RAW_DISPLAY"
