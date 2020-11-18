@@ -2,6 +2,9 @@
 #define RAW_DISPLAY_H
 
 /**
+ * @file raw_display.h
+ * @brief Cross platform simple RGB framebuffer library
+ *
  * Raw Display provides a cross platform single RGB window display
  * It is designed for simplicity and low dependencies, not for performance
  *
@@ -14,16 +17,19 @@
  *  - 4 will select the MacOS/Cocoa implementation
  */
 
-#define RAW_DISPLAY_MODE_LINUX_XCB 1
-#define RAW_DISPLAY_MODE_LINUX_FB 2
-#define RAW_DISPLAY_MODE_WIN32 3
-#define RAW_DISPLAY_MODE_MACOS 4
+#define RAW_DISPLAY_MODE_LINUX_XCB 1 ///< Use the Linux X11/XCB backend
+#define RAW_DISPLAY_MODE_LINUX_FB 2 ///< Use the Linux raw framebuffer backend
+#define RAW_DISPLAY_MODE_WIN32 3 ///< Use the Microsoft Windows backend
+#define RAW_DISPLAY_MODE_MACOS 4 ///< Use the MacOS Cocoa backend
 
 #include <stdbool.h>
 #include <stdint.h>
 
 struct raw_display;
 
+/**
+ * List of all of the types of events that @ref raw_display_event covers
+ */
 enum raw_display_event_type {
     RAW_DISPLAY_EVENT_unknown,
     RAW_DISPLAY_EVENT_key,
@@ -32,17 +38,21 @@ enum raw_display_event_type {
     RAW_DISPLAY_EVENT_quit,
 };
 
+/**
+ * Details on the events that may be returned from
+ * @ref raw_display_process_event
+ */
 struct raw_display_event {
-    enum raw_display_event_type type;
+    enum raw_display_event_type type; ///< What type of event is this?
     union {
         struct {
-            int x;
-            int y;
-            int button;
-        } mouse;
+            int x;      ///< X coordinate of the mouse event
+            int y;      ///< Y coordinate of the mouse event
+            int button; ///< Which button was pressed
+        } mouse;        ///< Used if the event is mouse_down or mouse_up
         struct {
             int key;
-        } key;
+        } key; ///< Used if the event is 'key'
     };
 };
 
@@ -81,7 +91,8 @@ uint8_t *raw_display_get_frame(struct raw_display *rd);
  * a certain amount of time has elapsed)
  * @param rd Raw display structure to process
  * @param event Area to store information about the incoming event
- * @return true if there is an event to process, false if there are none
+ * @return true if there is an event to process (and event is now valid),
+ *         false if there are no outstanding events
  */
 bool raw_display_process_event(struct raw_display *rd,
                                struct raw_display_event *event);

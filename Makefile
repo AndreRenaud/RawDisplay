@@ -16,6 +16,9 @@ raw_display_test: raw_display.o raw_display_test.o
 %.o: %.c raw_display.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+docs: raw_display.h raw_display.dox
+	doxygen raw_display.dox
+
 format:
 	clang-format -i raw_display.c
 	clang-format -i raw_display.h
