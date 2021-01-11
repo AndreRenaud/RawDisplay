@@ -1,6 +1,6 @@
 CFLAGS=-g -O3 -Wall -pipe -Werror -std=c99
 
-OS=$(shell uname -s)
+OS?=$(shell uname -s)
 
 PROGRAM?=raw_display_test-$(OS)
 
@@ -10,7 +10,7 @@ ifeq ("$(OS)", "Darwin")
 	CFLAGS+=-x objective-c
 else ifeq ("$(OS)", "Linux")
 	LFLAGS+=-lxcb -lxcb-image -lxcb-icccm -lm
-else ifeq ("$(OS)", "windows32")
+else ifeq ("$(OS)", "Windows_NT")
 	LFLAGS+=-mconsole -lgdi32
 	PROGRAM=raw_display_test.exe
 endif
