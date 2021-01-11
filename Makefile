@@ -31,6 +31,6 @@ format:
 	clang-format -i raw_display.h
 
 clean:
-	rm *.o $(PROGRAM)
+	rm -f *.o $(PROGRAM)
 
 .PHONY: format clean

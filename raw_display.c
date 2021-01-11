@@ -197,13 +197,16 @@ bool raw_display_process_event(struct raw_display *rd,
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_LINUX_FB
 #error "Raw Display mode 2 (Linux FBCon) not implemented"
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_WIN32
-#ifndef UNICODE
-#define UNICODE
+
+// Just ansi for now
+#ifdef UNICODE
+#undef UNICODE
 #endif
+
 #include <windows.h>
 #define FRAME_COUNT 3
 struct raw_display {
-    WNDCLASSEX wc;
+    WNDCLASSEXA wc;
     HWND hwnd;
     int width;
     int height;
@@ -257,9 +260,9 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam,
 struct raw_display *raw_display_init(const char *title, int width, int height)
 {
     struct raw_display *rd;
-    const wchar_t classname[] = L"Class Name";
+    const char classname[] = "Class Name";
     HINSTANCE hInstance = GetModuleHandle(NULL);
-    const wchar_t title2[] = L"title"; // todo: convert title to wchar
+    // const wchar_t title2[] = L"title"; // todo: convert title to wchar
 
     rd = calloc(sizeof(struct raw_display), 1);
     if (!rd)
@@ -279,7 +282,7 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     rd->wc.lpszClassName = classname;
     rd->wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 
-    if (!RegisterClassEx(&rd->wc)) {
+    if (!RegisterClassExA(&rd->wc)) {
         free(rd);
         return NULL;
     }
@@ -290,13 +293,10 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     // WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
     // width, height, NULL, NULL, hInstance, NULL);
 
-    rd->hwnd = CreateWindow(classname, title2,
-
-                            WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU,
-
-                            CW_USEDEFAULT, CW_USEDEFAULT, width, height,
-
-                            NULL, NULL, hInstance, NULL
+    rd->hwnd = CreateWindowExA(WS_EX_CLIENTEDGE, classname, title,
+                               WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU,
+                               CW_USEDEFAULT, CW_USEDEFAULT, width, height,
+                               NULL, NULL, hInstance, NULL
 
     );
 
