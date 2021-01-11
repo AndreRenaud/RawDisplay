@@ -228,7 +228,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam,
         HBITMAP bitmap;
         struct raw_display *rd;
 
-        rd = (struct raw_display *)GetWindowLongPtrA(hwnd, GWL_USERDATA);
+        rd = (struct raw_display *)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
         if (!rd) {
             printf("no raw display");
             return 0;
@@ -316,7 +316,7 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
         }
     }
 
-    SetWindowLongPtrA(rd->hwnd, GWL_USERDATA, (LONG_PTR)rd);
+    SetWindowLongPtrA(rd->hwnd, GWLP_USERDATA, (LONG_PTR)rd);
 
     rd->width = width;
     rd->height = height;

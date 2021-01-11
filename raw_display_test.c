@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 		}
 
 		if (1) {
-			char frame_index[4];
+			char frame_index[5];
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < width; x++) {
 					uint32_t *pos = (uint32_t *)(frame + y * stride + x * bpp / 8);
