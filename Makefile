@@ -2,7 +2,7 @@ CFLAGS=-g -O3 -Wall -pipe -Werror -std=c99
 
 OS?=$(shell uname -s)
 
-PROGRAM?=raw_display_test-$(OS)
+PROGRAM?=raw_display_test
 
 ifeq ("$(OS)", "Darwin")
 	LFLAGS=-framework Cocoa -lm
