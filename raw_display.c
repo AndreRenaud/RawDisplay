@@ -197,6 +197,9 @@ bool raw_display_process_event(struct raw_display *rd,
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_LINUX_FB
 #error "Raw Display mode 2 (Linux FBCon) not implemented"
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_WIN32
+#ifndef UNICODE
+#define UNICODE
+#endif
 #include <windows.h>
 #define FRAME_COUNT 3
 struct raw_display {
@@ -204,15 +207,59 @@ struct raw_display {
     HWND hwnd;
     int width;
     int height;
-    int nframes;
+    int stride;
     uint8_t *frames[FRAME_COUNT];
-    HBITMAP bitmaps[FRAME_COUNT];
     int cur_frame;
 };
+
+static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam,
+                                   LPARAM lParam)
+{
+    printf("WindowProc %d\n", uMsg);
+    switch (uMsg) {
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc;
+        HDC hdcMem;
+        HBITMAP bitmap;
+        struct raw_display *rd;
+
+        rd = (struct raw_display *)GetWindowLongPtrA(hwnd, GWL_USERDATA);
+        if (!rd) {
+            printf("no raw display");
+            return 0;
+        }
+
+        printf("redrawing\n");
+        hdc = BeginPaint(hwnd, &ps);
+
+        hdcMem = CreateCompatibleDC(hdc);
+        bitmap = CreateBitmap(rd->width, rd->height, 1, 32,
+                              rd->frames[rd->cur_frame]);
+        SelectObject(hdcMem, bitmap);
+        BitBlt(hdc, 0, 0, rd->width, rd->height, hdcMem, 0, 0, SRCCOPY);
+
+        DeleteObject(bitmap);
+        DeleteDC(hdcMem);
+        EndPaint(hwnd, &ps);
+        break;
+    }
+    default:
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+    return 0;
+}
 
 struct raw_display *raw_display_init(const char *title, int width, int height)
 {
     struct raw_display *rd;
+    const wchar_t classname[] = L"Class Name";
+    HINSTANCE hInstance = GetModuleHandle(NULL);
+    const wchar_t title2[] = L"title"; // todo: convert title to wchar
 
     rd = calloc(sizeof(struct raw_display), 1);
     if (!rd)
@@ -221,7 +268,7 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     // Step 1: Registering the Window Class
     rd->wc.cbSize = sizeof(WNDCLASSEX);
     rd->wc.style = 0;
-    rd->wc.lpfnWndProc = WndProc;
+    rd->wc.lpfnWndProc = WindowProc;
     rd->wc.cbClsExtra = 0;
     rd->wc.cbWndExtra = 0;
     rd->wc.hInstance = hInstance;
@@ -229,7 +276,7 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     rd->wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     rd->wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     rd->wc.lpszMenuName = NULL;
-    rd->wc.lpszClassName = g_szClassName;
+    rd->wc.lpszClassName = classname;
     rd->wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 
     if (!RegisterClassEx(&rd->wc)) {
@@ -238,34 +285,47 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     }
 
     // Step 2: Creating the Window
-    rd->hwnd =
-        CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, title,
-                       WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-                       width, height, NULL, NULL, hInstance, NULL);
+    // rd->hwnd =
+    // CreateWindowEx(WS_EX_CLIENTEDGE, classname, title2,
+    // WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+    // width, height, NULL, NULL, hInstance, NULL);
 
-    if (hwnd == NULL) {
+    rd->hwnd = CreateWindow(classname, title2,
+
+                            WS_OVERLAPPED | WS_MINIMIZEBOX | WS_SYSMENU,
+
+                            CW_USEDEFAULT, CW_USEDEFAULT, width, height,
+
+                            NULL, NULL, hInstance, NULL
+
+    );
+
+    printf("hwnd: %p\n", rd->hwnd);
+    if (rd->hwnd == NULL) {
         free(rd);
         return NULL;
     }
 
-    rd->width = width;
-    rd->height = height;
-
-    ShowWindow(rc->hwnd, SW_SHOWNORMAL);
-    UpdateWindow(rc->hwnd);
-
-    for (int i = 0; i < NFRAMES; i++) {
-        rd->frames[i] = calloc(width * height * 4);
+    for (int i = 0; i < FRAME_COUNT; i++) {
+        rd->frames[i] = calloc(width * height, 4);
         if (!rd->frames[i]) {
             for (int j = 0; j < i; j++)
                 free(rd->frames[j]);
             free(rd);
             return NULL;
         }
-        rd->bitmaps[i] = CreateBitmap(width, height, 3, 32, rd->frames[i]);
     }
 
-    return rc;
+    SetWindowLongPtrA(rd->hwnd, GWL_USERDATA, (LONG_PTR)rd);
+
+    rd->width = width;
+    rd->height = height;
+    rd->stride = width * 4; // TODO: Correct?
+
+    ShowWindow(rd->hwnd, SW_SHOWNORMAL);
+    UpdateWindow(rd->hwnd);
+
+    return rd;
 }
 
 void raw_display_info(struct raw_display *rd, int *width, int *height,
@@ -290,10 +350,14 @@ bool raw_display_process_event(struct raw_display *rd,
                                struct raw_display_event *event)
 {
     MSG Msg;
+    int count = 0;
 
-    while (GetMessage(&Msg, NULL, 0, 0) > 0) {
-        TranslateMessage(&Msg);
-        DispatchMessage(&Msg);
+    while (GetQueueStatus(QS_MOUSEBUTTON | QS_KEY) != 0) {
+        if (GetMessage(&Msg, NULL, 0, 0) > 0) {
+            printf("message %d, %d\n", count++, Msg.message);
+            TranslateMessage(&Msg);
+            DispatchMessage(&Msg);
+        }
     }
 
     return false;
@@ -301,14 +365,17 @@ bool raw_display_process_event(struct raw_display *rd,
 
 void raw_display_flip(struct raw_display *rd)
 {
-    /* TODO: Should be doing BitBlt on rd->cur_frame */
-    SelectObject() rd->cur_frame = (rd->cur_frame + 1) % FRAME_COUNT;
+    printf("flip: %d -> %d\n", rd->cur_frame,
+           (rd->cur_frame + 1) % FRAME_COUNT);
+    rd->cur_frame = (rd->cur_frame + 1) % FRAME_COUNT;
+    RedrawWindow(rd->hwnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+    // InvalidateRect(rd->hwnd, NULL, false);
 }
 
 void raw_display_shutdown(struct raw_display *rd)
 {
-    DestroyWindow(rc->hwnd);
-    free(rc);
+    DestroyWindow(rd->hwnd);
+    free(rd);
 }
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_MACOS
 
@@ -384,6 +451,8 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
                                                NSWindowStyleMaskTitled
                                        backing:NSBackingStoreBuffered
                                          defer:NO] autorelease];
+    [rd->window setAcceptsMouseMovedEvents:YES];
+
     NSString *nstitle = [[NSString alloc] initWithUTF8String:title];
     [rd->window setTitle:nstitle];
 
@@ -674,9 +743,9 @@ int raw_display_draw_string(struct raw_display *rd, int x, int y,
     uint8_t *rgb_start = raw_display_get_frame(rd);
     if (!rgb_start)
         return -EINVAL;
-    rgb_start += y * rd->stride + x * 4;
     if (y < 0 || y >= rd->height - 8 || x >= rd->width)
         return -EINVAL;
+    rgb_start += y * rd->stride + x * 4;
     blit_string(rgb_start, rd->stride, string, colour);
     return 0;
 }
@@ -725,7 +794,8 @@ void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1,
                            int y1, uint32_t colour, int line_width)
 {
     /* See http://members.chello.at/%7Eeasyfilter/Bresenham.pdf for full
-     * details on this * Code there has been released under public domain:
+     * details on this.
+     * Code there has been released under public domain:
      *   - The programs have no copyright and could be used and modified by
      * anyone as wanted.
      */

@@ -19,8 +19,8 @@
 
 #define RAW_DISPLAY_MODE_LINUX_XCB 1 ///< Use the Linux X11/XCB backend
 #define RAW_DISPLAY_MODE_LINUX_FB 2 ///< Use the Linux raw framebuffer backend
-#define RAW_DISPLAY_MODE_WIN32 3 ///< Use the Microsoft Windows backend
-#define RAW_DISPLAY_MODE_MACOS 4 ///< Use the MacOS Cocoa backend
+#define RAW_DISPLAY_MODE_WIN32 3    ///< Use the Microsoft Windows backend
+#define RAW_DISPLAY_MODE_MACOS 4    ///< Use the MacOS Cocoa backend
 
 #include <stdbool.h>
 #include <stdint.h>

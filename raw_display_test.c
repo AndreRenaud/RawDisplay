@@ -36,7 +36,7 @@ static void draw_clock(struct raw_display *rd, int x, int y, int radius)
 int main(int argc, char **argv)
 {
 	struct raw_display *rd;
-	int frame_count = 100;
+	int frame_count = 1000;
 
 	printf("raw display test\n");
 
@@ -85,13 +85,14 @@ int main(int argc, char **argv)
 
 		raw_display_flip(rd);
 		while (raw_display_process_event(rd, &event)) {
+			printf("Got event %d\n", event.type);
 			// do something with the event
 		}
 		//usleep(500 * 1000);
 	}
 	time_t end = time(NULL);
-	printf("Took %d seconds to do %ld frames. %.2f fps\n",
-		frame_count, end - start, (end - start) ? ((float)frame_count) / (end - start) : -1);
+	printf("Took %ld seconds to do %d frames. %.2f fps\n",
+		end - start, frame_count, (end - start) ? ((float)frame_count) / (end - start) : -1);
 	raw_display_shutdown(rd);
 
 
