@@ -10,7 +10,7 @@ ifeq ("$(OS)", "Darwin")
 	CFLAGS+=-x objective-c
 else ifeq ("$(OS)", "Linux")
 	LFLAGS+=-lxcb -lxcb-image -lxcb-icccm -lm
-else ifeq ("$(OS)", "Windows")
+else ifeq ("$(OS)", "windows32")
 	LFLAGS+=-mconsole -lgdi32
 	PROGRAM=raw_display_test.exe
 endif
