@@ -91,8 +91,9 @@ int main(int argc, char **argv)
 		//usleep(500 * 1000);
 	}
 	time_t end = time(NULL);
-	printf("Took %ld seconds to do %d frames. %.2f fps\n",
-		end - start, frame_count, (end - start) ? ((float)frame_count) / (end - start) : -1);
+	int duration = (int)(end - start);
+	printf("Took %d seconds to do %d frames. %.2f fps\n",
+		duration, frame_count, duration ? ((float)frame_count) / duration : -1);
 	raw_display_shutdown(rd);
 
 
