@@ -49,6 +49,9 @@ int main(int argc, char **argv)
 	raw_display_info(rd, &width, &height, &bpp, &stride);
 	printf("Info: %dx%d@%d (stride=%d)\n", width, height, bpp, stride);
 
+	int clock_x = 400;
+	int clock_y = 400;
+
 	time_t start = time(NULL);
 	for (int i = 0; i < frame_count; i++) {
 		uint8_t *frame = raw_display_get_frame(rd);
@@ -80,12 +83,20 @@ int main(int argc, char **argv)
 			raw_display_draw_line(rd, 100, 100, 150, 200, 0xffffffff, 10);
 
 			//raw_display_draw_circle(rd, 300, 300, 50, 0xffffff00, 51);
-			draw_clock(rd, 400, 400, 100);
+			draw_clock(rd, clock_x, clock_y, 100);
 		}
 
 		raw_display_flip(rd);
 		while (raw_display_process_event(rd, &event)) {
 			printf("Got event %d\n", event.type);
+			switch (event.type) {
+				case RAW_DISPLAY_EVENT_mouse_down:
+					clock_x = event.mouse.x;
+					clock_y = event.mouse.y;
+					break;
+				default:
+					break;
+			}
 			// do something with the event
 		}
 		//usleep(500 * 1000);
