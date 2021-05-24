@@ -7,6 +7,20 @@
 
 #include "raw_display.h"
 
+#define max(a, b)                                                            \
+    ({                                                                       \
+        __typeof__(a) _a = (a);                                              \
+        __typeof__(b) _b = (b);                                              \
+        _a > _b ? _a : _b;                                                   \
+    })
+
+#define min(a, b)                                                            \
+    ({                                                                       \
+        __typeof__(a) _a = (a);                                              \
+        __typeof__(b) _b = (b);                                              \
+        _a < _b ? _a : _b;                                                   \
+    })
+
 /* If the configuration hasn't been specified, try and determine it */
 #ifndef CONFIG_RAW_DISPLAY
 #if __APPLE__ == 1
@@ -842,6 +856,21 @@ static inline void xLine(struct raw_display *rd, int x0, int x1, int y,
                          uint32_t colour)
 {
     uint8_t *rgb = raw_display_get_frame(rd);
+    // Clamp all the coordinates
+    if (x1 < x0) {
+        int tmp = x1;
+        x1 = x0;
+        x0 = tmp;
+    }
+    if (x1 < 0)
+        return;
+    if (x0 > rd->width - 1)
+        return;
+    if (y < 0 || y > rd->height - 1)
+        return;
+    x0 = max(x0, 0);
+    x1 = min(x1, rd->width - 1);
+    y = max(min(y, rd->height - 1), 0);
     memset32((uint32_t *)(rgb + y * rd->stride + x0 * 4), colour,
              x1 - x0 + 1);
 }
@@ -849,6 +878,21 @@ static inline void xLine(struct raw_display *rd, int x0, int x1, int y,
 static inline void yLine(struct raw_display *rd, int x, int y0, int y1,
                          uint32_t colour)
 {
+    // Reject invalid coordinates & clamp the remaining ones
+    if (y1 < y0) {
+        int tmp = y1;
+        y1 = y0;
+        y0 = tmp;
+    }
+    if (x < 0 || x > rd->width - 1)
+        return;
+    if (y0 > rd->height - 1)
+        return;
+    if (y1 < 0)
+        return;
+    y0 = max(y0, 0);
+    y1 = min(y1, rd->height - 1);
+    x = max(min(x, rd->width - 1), 0);
     while (y0 <= y1)
         raw_display_set_pixel(rd, x, y0++, colour);
 }
