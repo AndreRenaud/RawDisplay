@@ -138,7 +138,7 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     return rd;
 }
 
-void raw_display_info(struct raw_display *rd, int *width, int *height,
+void raw_display_info(const struct raw_display *rd, int *width, int *height,
                       int *bpp, int *stride)
 {
     if (!rd)
@@ -153,7 +153,7 @@ void raw_display_info(struct raw_display *rd, int *width, int *height,
         *stride = rd->stride;
 }
 
-uint8_t *raw_display_get_frame(struct raw_display *rd)
+uint8_t *raw_display_get_frame(const struct raw_display *rd)
 {
     return rd->frames[rd->cur_frame];
 }
@@ -342,7 +342,7 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     return rd;
 }
 
-void raw_display_info(struct raw_display *rd, int *width, int *height,
+void raw_display_info(const struct raw_display *rd, int *width, int *height,
                       int *bpp, int *stride)
 {
     if (width)
@@ -483,7 +483,7 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     return rd;
 }
 
-void raw_display_info(struct raw_display *rd, int *width, int *height,
+void raw_display_info(const struct raw_display *rd, int *width, int *height,
                       int *bpp, int *stride)
 {
     if (width)
@@ -496,7 +496,7 @@ void raw_display_info(struct raw_display *rd, int *width, int *height,
         *stride = rd->stride;
 }
 
-uint8_t *raw_display_get_frame(struct raw_display *rd)
+uint8_t *raw_display_get_frame(const struct raw_display *rd)
 {
     return rd->frames[rd->cur_frame];
 }
@@ -948,6 +948,32 @@ void raw_display_set_pixel(struct raw_display *rd, int x, int y,
     uint8_t *rgb = raw_display_get_frame(rd);
     *(uint32_t *)(rgb + y * rd->stride + x * 4) = colour;
 }
+
+int raw_display_save_frame(const struct raw_display *rd, const char *filename)
+{
+    FILE *fp;
+    uint32_t *rgb;
+    if (!rd || !filename)
+        return -EINVAL;
+    rgb = (uint32_t *)raw_display_get_frame(rd);
+    if (!rgb)
+        return -EINVAL;
+    fp = fopen(filename, "wb");
+    if (!fp)
+        return -errno;
+
+    fprintf(fp, "P6\n");
+    fprintf(fp, "%d %d\n255\n", rd->width, rd->height);
+
+    for (int y = 0; y < rd->height; y++) {
+        for (int x = 0; x < rd->width; x++)
+            fprintf(fp, "%c%c%c", (rgb[x] >> 16) & 0xff, (rgb[x] >> 8) & 0xff, rgb[x] & 0xff);
+        rgb += rd->stride / 4;
+    }
+    fclose(fp);
+    return 0;
+}
+
 
 int raw_display_load_ppm(const char *ppm_file, int *width, int *height,
                          uint8_t **data)

@@ -75,7 +75,7 @@ struct raw_display *raw_display_init(const char *title, int width,
  * @param bpp Area to store the bits-per-pixel of the display
  * @param stride Area to store the stride in bytes of the display
  */
-void raw_display_info(struct raw_display *rd, int *width, int *height,
+void raw_display_info(const struct raw_display *rd, int *width, int *height,
                       int *bpp, int *stride);
 
 /**
@@ -83,7 +83,16 @@ void raw_display_info(struct raw_display *rd, int *width, int *height,
  * @param rd Raw display structure to get frame of
  * @return height * stride bytes of pixel data on success, NULL on failure
  */
-uint8_t *raw_display_get_frame(struct raw_display *rd);
+uint8_t *raw_display_get_frame(const struct raw_display *rd);
+
+/**
+ * Save the currently available off-screen bitmap of the display to a
+ * local ppm file.
+ * @param rd Raw display structure to save frame from
+ * @filename Filename to write data to (PPM format)
+ * @return < 0 on failure, >= 0 on success
+ */
+int raw_display_save_frame(const struct raw_display *rd, const char *filename);
 
 /**
  * Process a single event from the display system

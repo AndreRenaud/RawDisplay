@@ -86,6 +86,7 @@ int main(int argc, char **argv)
 			draw_clock(rd, clock_x, clock_y, 100);
 		}
 
+		raw_display_save_frame(rd, "output.ppm");
 		raw_display_flip(rd);
 		while (raw_display_process_event(rd, &event)) {
 			printf("Got event %d\n", event.type);
