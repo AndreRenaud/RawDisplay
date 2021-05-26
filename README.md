@@ -16,10 +16,10 @@ For large/complex applications it is probably better to use something like
  * Unlicense suitable for incorporation into almost all projects
  * Built in fixed-width font
  * Simple drawing routines
- ** Filled/unfilled Rectangles
- ** Lines
- ** Filled/unfilled Circles
- ** Fixed-width text
+  * Filled/unfilled Rectangles
+  * Lines
+  * Filled/unfilled Circles
+  * Fixed-width text
 
 License
 =======
