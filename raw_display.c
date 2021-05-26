@@ -355,7 +355,7 @@ void raw_display_info(const struct raw_display *rd, int *width, int *height,
         *stride = rd->width * 4;
 }
 
-uint8_t *raw_display_get_frame(struct raw_display *rd)
+uint8_t *raw_display_get_frame(const struct raw_display *rd)
 {
     return rd->frames[rd->cur_frame];
 }
