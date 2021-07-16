@@ -561,6 +561,76 @@ void raw_display_shutdown(struct raw_display *rd)
     }
     free(rd);
 }
+#elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_DUMMY
+#define FRAME_COUNT 3
+struct raw_display {
+    int width;
+    int height;
+
+    uint8_t *frames[FRAME_COUNT];
+    int cur_frame;
+};
+struct raw_display *raw_display_init(const char *title, int width, int height)
+{
+    struct raw_display *rd;
+
+    rd = calloc(sizeof(*rd), 1);
+    if (!rd)
+        return NULL;
+
+    rd->width = width;
+    rd->height = height;
+
+    for (int i = 0; i < FRAME_COUNT; i++) {
+        rd->frames[i] = calloc(width * height * 4, 1);
+        if (!rd->frames[i]) {
+            for (int j = 0; j < i; j++) {
+                free(rd->frames[j]);
+            }
+            free(rd);
+            return NULL;
+        }
+    }
+
+    return rd;
+}
+
+uint8_t *raw_display_get_frame(const struct raw_display *rd)
+{
+    return rd->frames[rd->cur_frame];
+}
+
+void raw_display_info(const struct raw_display *rd, int *width, int *height,
+                      int *bpp, int *stride)
+{
+    if (!rd)
+        return;
+    if (width)
+        *width = rd->width;
+    if (height)
+        *height = rd->height;
+    if (bpp)
+        *bpp = 32;
+    if (stride)
+        *stride = rd->width * 4;
+}
+
+void raw_display_flip(struct raw_display *rd)
+{
+    rd->cur_frame = (rd->cur_frame + 1) % FRAME_COUNT;
+}
+
+void raw_display_shutdown(struct raw_display *rd)
+{
+    free(rd);
+}
+
+bool raw_display_process_event(struct raw_display *rd,
+                               struct raw_display_event *event)
+{
+    return false;
+}
+
 #else
 #error "Unable to determine CONFIG_RAW_DISPLAY"
 #endif
@@ -755,12 +825,15 @@ int raw_display_draw_string(struct raw_display *rd, int x, int y,
                             char *string, uint32_t colour)
 {
     uint8_t *rgb_start = raw_display_get_frame(rd);
+    int width, height, stride;
+
     if (!rgb_start)
         return -EINVAL;
-    if (y < 0 || y >= rd->height - 8 || x >= rd->width)
+    raw_display_info(rd, &width, &height, NULL, &stride);
+    if (y < 0 || y >= height - 8 || x >= width)
         return -EINVAL;
-    rgb_start += y * rd->stride + x * 4;
-    blit_string(rgb_start, rd->stride, string, colour);
+    rgb_start += y * stride + x * 4;
+    blit_string(rgb_start, stride, string, colour);
     return 0;
 }
 
@@ -777,6 +850,9 @@ void raw_display_draw_rectangle(struct raw_display *rd, int x0, int y0,
                                 int x1, int y1, uint32_t colour,
                                 int border_width)
 {
+    int width, height, stride;
+    raw_display_info(rd, &width, &height, NULL, &stride);
+
     if (x0 > x1) {
         int tmp = x1;
         x1 = x0;
@@ -787,20 +863,20 @@ void raw_display_draw_rectangle(struct raw_display *rd, int x0, int y0,
         y1 = y0;
         y0 = tmp;
     }
-    if (x1 > rd->width - 1)
-        x1 = rd->width - 1;
-    if (y1 > rd->height - 1)
-        y1 = rd->height - 1;
+    if (x1 > width - 1)
+        x1 = width - 1;
+    if (y1 > height - 1)
+        y1 = height - 1;
     if (x0 < 0)
         x0 = 0;
     if (y0 < 0)
         y0 = 0;
 
     uint8_t *rgb = raw_display_get_frame(rd);
-    rgb += y0 * rd->stride;
+    rgb += y0 * stride;
     for (; y0 <= y1; y0++) {
         memset32((uint32_t *)(rgb + x0 * 4), colour, x1 - x0 + 1);
-        rgb += rd->stride;
+        rgb += stride;
     }
 }
 
@@ -856,6 +932,8 @@ static inline void xLine(struct raw_display *rd, int x0, int x1, int y,
                          uint32_t colour)
 {
     uint8_t *rgb = raw_display_get_frame(rd);
+    int width, height, stride;
+    raw_display_info(rd, &width, &height, NULL, &stride);
     // Clamp all the coordinates
     if (x1 < x0) {
         int tmp = x1;
@@ -864,15 +942,14 @@ static inline void xLine(struct raw_display *rd, int x0, int x1, int y,
     }
     if (x1 < 0)
         return;
-    if (x0 > rd->width - 1)
+    if (x0 > width - 1)
         return;
-    if (y < 0 || y > rd->height - 1)
+    if (y < 0 || y > height - 1)
         return;
     x0 = max(x0, 0);
-    x1 = min(x1, rd->width - 1);
-    y = max(min(y, rd->height - 1), 0);
-    memset32((uint32_t *)(rgb + y * rd->stride + x0 * 4), colour,
-             x1 - x0 + 1);
+    x1 = min(x1, width - 1);
+    y = max(min(y, height - 1), 0);
+    memset32((uint32_t *)(rgb + y * stride + x0 * 4), colour, x1 - x0 + 1);
 }
 
 static inline void yLine(struct raw_display *rd, int x, int y0, int y1,
@@ -943,18 +1020,23 @@ void raw_display_draw_circle(struct raw_display *rd, int xc, int yc,
 void raw_display_set_pixel(struct raw_display *rd, int x, int y,
                            uint32_t colour)
 {
-    if (x < 0 || x >= rd->width || y < 0 || y >= rd->height)
+    int width, height, stride;
+    raw_display_info(rd, &width, &height, NULL, &stride);
+    if (x < 0 || x >= width || y < 0 || y >= height)
         return;
     uint8_t *rgb = raw_display_get_frame(rd);
-    *(uint32_t *)(rgb + y * rd->stride + x * 4) = colour;
+    *(uint32_t *)(rgb + y * stride + x * 4) = colour;
 }
 
 int raw_display_save_frame(const struct raw_display *rd, const char *filename)
 {
     FILE *fp;
     uint32_t *rgb;
+    int width, height, stride;
+
     if (!rd || !filename)
         return -EINVAL;
+    raw_display_info(rd, &width, &height, NULL, &stride);
     rgb = (uint32_t *)raw_display_get_frame(rd);
     if (!rgb)
         return -EINVAL;
@@ -963,17 +1045,18 @@ int raw_display_save_frame(const struct raw_display *rd, const char *filename)
         return -errno;
 
     fprintf(fp, "P6\n");
-    fprintf(fp, "%d %d\n255\n", rd->width, rd->height);
+    fprintf(fp, "%d %d\n255\n", width, height);
 
-    for (int y = 0; y < rd->height; y++) {
-        for (int x = 0; x < rd->width; x++)
-            fprintf(fp, "%c%c%c", (rgb[x] >> 16) & 0xff, (rgb[x] >> 8) & 0xff, rgb[x] & 0xff);
-        rgb += rd->stride / 4;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            fprintf(fp, "%c%c%c", (rgb[x] >> 16) & 0xff, (rgb[x] >> 8) & 0xff,
+                    rgb[x] & 0xff);
+        }
+        rgb += stride / 4;
     }
     fclose(fp);
     return 0;
 }
-
 
 int raw_display_load_ppm(const char *ppm_file, int *width, int *height,
                          uint8_t **data)

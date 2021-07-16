@@ -15,12 +15,14 @@
  *  - 2 will select the Linux/Framebuffer implementation
  *  - 3 will select the Win32 implementation
  *  - 4 will select the MacOS/Cocoa implementation
+ *  - 5 will select the dummy implementation, for off-screen drawing
  */
 
 #define RAW_DISPLAY_MODE_LINUX_XCB 1 ///< Use the Linux X11/XCB backend
 #define RAW_DISPLAY_MODE_LINUX_FB 2 ///< Use the Linux raw framebuffer backend
 #define RAW_DISPLAY_MODE_WIN32 3    ///< Use the Microsoft Windows backend
 #define RAW_DISPLAY_MODE_MACOS 4    ///< Use the MacOS Cocoa backend
+#define RAW_DISPLAY_MODE_DUMMY 5    ///< Use the dummy/offscreen backend
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -92,7 +94,8 @@ uint8_t *raw_display_get_frame(const struct raw_display *rd);
  * @filename Filename to write data to (PPM format)
  * @return < 0 on failure, >= 0 on success
  */
-int raw_display_save_frame(const struct raw_display *rd, const char *filename);
+int raw_display_save_frame(const struct raw_display *rd,
+                           const char *filename);
 
 /**
  * Process a single event from the display system
