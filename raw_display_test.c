@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	for (int i = 0; i < frame_count; i++) {
 		uint8_t *frame = raw_display_get_frame(rd);
 		struct raw_display_event event;
-		printf("frame %d\n", i);
+		printf("frame %d fps=%d\n", i, fps);
 
 		if (!frame) {
 			fprintf(stderr, "Cannot get frame %d\n", i);
