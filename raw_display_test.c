@@ -37,6 +37,7 @@ int main(int argc, char **argv)
 {
 	struct raw_display *rd;
 	int frame_count = 1000;
+	int fps = 0;
 
 	printf("raw display test\n");
 
@@ -64,7 +65,7 @@ int main(int argc, char **argv)
 		}
 
 		if (1) {
-			char frame_index[5];
+			char buffer[20];
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < width; x++) {
 					uint32_t *pos = (uint32_t *)(frame + y * stride + x * bpp / 8);
@@ -75,9 +76,9 @@ int main(int argc, char **argv)
 				}
 			}
 
-			sprintf(frame_index, "%d", i % 1000);
+			sprintf(buffer, "%d fps=%d", i % 1000, fps);
 
-			raw_display_draw_string(rd, 0, 0, frame_index, 0xff00ff00);
+			raw_display_draw_string(rd, 0, 0, buffer, 0xff00ff00);
 			raw_display_draw_string(rd, 0, 10, "What is this?", 0xffffffff);
 			raw_display_draw_rectangle(rd, 100, 100, 150, 200, 0xff << (i % 24), -1);
 			raw_display_draw_line(rd, 100, 100, 150, 200, 0xffffffff, 10);
@@ -101,6 +102,8 @@ int main(int argc, char **argv)
 			// do something with the event
 		}
 		//usleep(500 * 1000);
+		int duration = (int)(time(NULL) - start);
+		fps = duration ? (i / duration) : -1;
 	}
 	time_t end = time(NULL);
 	int duration = (int)(end - start);
