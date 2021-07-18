@@ -794,7 +794,7 @@ char font8x8_basic[128][8] = {
 static void blit_char(uint8_t *rgb_start, int stride, char ch,
                       uint32_t colour)
 {
-    if (ch < 0)
+    if (ch < 0 || ch >= 128)
         return;
 
     char *val = font8x8_basic[(uint8_t)ch];
