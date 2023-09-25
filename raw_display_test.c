@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 
 	printf("raw display test\n");
 
-	rd = raw_display_init("Demo app", 800, 600);
+	rd = raw_display_init("Demo app", 1024, 768);
 	if (!rd) {
 		fprintf(stderr, "Unable to open display\n");
 		return -1;
@@ -52,6 +52,8 @@ int main(int argc, char **argv)
 
 	int clock_x = 400;
 	int clock_y = 400;
+	int text_x = 0;
+	int text_y = 0;
 
 	time_t start = time(NULL);
 	for (int i = 0; i < frame_count; i++) {
@@ -79,7 +81,7 @@ int main(int argc, char **argv)
 			sprintf(buffer, "%d fps=%d", i % 1000, fps);
 
 			raw_display_draw_string(rd, 0, 0, buffer, 0xff00ff00);
-			raw_display_draw_string(rd, 0, 10, "What is this?", 0xffffffff);
+			raw_display_draw_string(rd, text_x, text_y, "What is this?", 0xffffffff);
 			raw_display_draw_rectangle(rd, 100, 100, 150, 200, 0xff << (i % 24), -1);
 			raw_display_draw_line(rd, 100, 100, 150, 200, 0xffffffff, 10);
 
@@ -90,13 +92,17 @@ int main(int argc, char **argv)
 		raw_display_save_frame(rd, "output.ppm");
 		raw_display_flip(rd);
 		while (raw_display_process_event(rd, &event)) {
-			printf("Got event %d\n", event.type);
 			switch (event.type) {
 				case RAW_DISPLAY_EVENT_mouse_down:
 					clock_x = event.mouse.x;
 					clock_y = event.mouse.y;
 					break;
+				case RAW_DISPLAY_EVENT_mouse_move:
+					text_x = event.mouse.x;
+					text_y = event.mouse.y;
+					break;
 				default:
+					printf("Unhandled event %d\n", event.type);
 					break;
 			}
 			// do something with the event
