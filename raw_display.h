@@ -37,6 +37,7 @@ enum raw_display_event_type {
     RAW_DISPLAY_EVENT_key,
     RAW_DISPLAY_EVENT_mouse_down,
     RAW_DISPLAY_EVENT_mouse_up,
+    RAW_DISPLAY_EVENT_mouse_move,
     RAW_DISPLAY_EVENT_quit,
 };
 
@@ -86,6 +87,17 @@ void raw_display_info(const struct raw_display *rd, int *width, int *height,
  * @return height * stride bytes of pixel data on success, NULL on failure
  */
 uint8_t *raw_display_get_frame(const struct raw_display *rd);
+
+/**
+ * @brief Retrieve the full number of frames, as well as the current one we're
+ * drawing to
+ *
+ * param rd Raw display structure to get from of
+ * @param frame_index Current index of the off-screen frame we're drawing to
+ * @param frame_count Total number of frames
+ */
+void raw_display_get_frame_details(const struct raw_display *rd,
+                                   int *frame_index, int *frame_count);
 
 /**
  * Save the currently available off-screen bitmap of the display to a

@@ -158,6 +158,15 @@ uint8_t *raw_display_get_frame(const struct raw_display *rd)
     return rd->frames[rd->cur_frame];
 }
 
+void raw_display_get_frame_details(const struct raw_display *rd,
+                                   int *frame_index, int *frame_count)
+{
+    if (frame_index)
+        *frame_index = rd->cur_frame;
+    if (frame_count)
+        *frame_count = FRAME_COUNT;
+}
+
 void raw_display_flip(struct raw_display *rd)
 {
     xcb_image_put(rd->conn, rd->window, rd->gcontext,
@@ -209,7 +218,180 @@ bool raw_display_process_event(struct raw_display *rd,
 }
 
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_LINUX_FB
-#error "Raw Display mode 2 (Linux FBCon) not implemented"
+#include <fcntl.h>
+#include <linux/fb.h>
+#include <linux/input.h>
+#include <poll.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+struct raw_display {
+    int fbdev;
+    int inputdev;
+    int width;
+    int height;
+    int stride;
+    int bpp;
+    int smem_len;
+    int cur_frame;
+    int max_frames;
+    uint8_t *base;
+
+    int last_x;
+    int last_y;
+    int last_touch;
+};
+
+struct raw_display *raw_display_init(const char *title, int width, int height)
+{
+    struct raw_display *rd;
+    int fd, inputdev;
+    struct fb_var_screeninfo fvsi;
+    struct fb_fix_screeninfo ffsi;
+
+    fd = open("/dev/fb0", O_RDWR);
+    if (fd < 0) {
+        perror("open");
+        return NULL;
+    }
+
+    inputdev = open("/dev/input/event5", O_RDONLY | O_NONBLOCK);
+    if (inputdev < 0) {
+        perror("inputdev");
+        return NULL;
+    }
+
+    if (ioctl(fd, FBIOGET_VSCREENINFO, &fvsi) < 0) {
+        perror("vscreeninfo");
+        close(fd);
+        return NULL;
+    }
+
+    if (ioctl(fd, FBIOGET_FSCREENINFO, &ffsi) < 0) {
+        perror("fscreeninfo");
+        close(fd);
+        return NULL;
+    }
+
+    rd = calloc(sizeof(struct raw_display), 1);
+    if (!rd) {
+        close(fd);
+        return NULL;
+    }
+
+    rd->fbdev = fd;
+    rd->inputdev = inputdev;
+    rd->width = fvsi.xres;
+    rd->height = fvsi.yres;
+    rd->stride = ffsi.line_length;
+    rd->bpp = fvsi.bits_per_pixel;
+    rd->max_frames = fvsi.yres_virtual / fvsi.yres;
+    rd->smem_len = ffsi.smem_len;
+    rd->base =
+        mmap(NULL, ffsi.smem_len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (rd->base == MAP_FAILED) {
+        perror("mmap");
+        free(rd);
+        close(fd);
+        return NULL;
+    }
+
+    return rd;
+}
+
+void raw_display_shutdown(struct raw_display *rd)
+{
+    close(rd->fbdev);
+    close(rd->inputdev);
+    munmap(rd->base, rd->smem_len);
+    free(rd);
+}
+
+void raw_display_info(const struct raw_display *rd, int *width, int *height,
+                      int *bpp, int *stride)
+{
+    if (width)
+        *width = rd->width;
+    if (height)
+        *height = rd->height;
+    if (bpp)
+        *bpp = rd->bpp;
+    if (stride)
+        *stride = rd->stride;
+}
+
+bool raw_display_process_event(struct raw_display *rd,
+                               struct raw_display_event *event)
+{
+    struct pollfd pfd;
+    int ready;
+    struct input_event ev;
+
+    pfd.fd = rd->inputdev;
+    pfd.events = POLLIN;
+    ready = poll(&pfd, 1, 0);
+    if (ready < 0) {
+        return false;
+    }
+    ssize_t r = read(rd->inputdev, &ev, sizeof(ev));
+    if (r != sizeof(ev))
+        return false;
+
+    switch (ev.type) {
+    case EV_ABS:
+        if (ev.code == ABS_X)
+            rd->last_x = ev.value;
+        if (ev.code == ABS_Y)
+            rd->last_y = ev.value;
+        if (ev.code == BTN_TOUCH)
+            rd->last_touch = ev.value;
+
+    case EV_SYN:
+        event->type = RAW_DISPLAY_EVENT_mouse_move;
+        event->mouse.x = rd->last_x;
+        event->mouse.y = rd->last_y;
+        return true;
+    }
+
+    return false;
+}
+
+uint8_t *raw_display_get_frame(const struct raw_display *rd)
+{
+    return rd->base + (rd->stride * rd->height) * rd->cur_frame;
+}
+
+void raw_display_flip(struct raw_display *rd)
+{
+    struct fb_var_screeninfo fvsi;
+    uint32_t dummy;
+    if (ioctl(rd->fbdev, FBIOGET_VSCREENINFO, &fvsi) < 0) {
+        perror("vscreeninfo");
+        return;
+    }
+    fvsi.yoffset = rd->cur_frame * fvsi.yres;
+    if (ioctl(rd->fbdev, FBIOPAN_DISPLAY, &fvsi) < 0) {
+        perror("fbiopan_display");
+    }
+    if (ioctl(rd->fbdev, FBIO_WAITFORVSYNC, &dummy) < 0) {
+        perror("vsync");
+    }
+
+    rd->cur_frame = (rd->cur_frame + 1) % rd->max_frames;
+}
+
+void raw_display_get_frame_details(const struct raw_display *rd,
+                                   int *frame_index, int *frame_count)
+{
+    if (frame_index)
+        *frame_index = rd->cur_frame;
+    if (frame_count)
+        *frame_count = rd->max_frames;
+}
+
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_WIN32
 
 // Just ansi for now
@@ -360,6 +542,15 @@ uint8_t *raw_display_get_frame(const struct raw_display *rd)
     return rd->frames[rd->cur_frame];
 }
 
+void raw_display_get_frame_details(const struct raw_display *rd,
+                                   int *frame_index, int *frame_count)
+{
+    if (frame_index)
+        *frame_index = rd->cur_frame;
+    if (frame_count)
+        *frame_count = FRAME_COUNT;
+}
+
 bool raw_display_process_event(struct raw_display *rd,
                                struct raw_display_event *event)
 {
@@ -501,6 +692,15 @@ uint8_t *raw_display_get_frame(const struct raw_display *rd)
     return rd->frames[rd->cur_frame];
 }
 
+void raw_display_get_frame_details(const struct raw_display *rd,
+                                   int *frame_index, int *frame_count)
+{
+    if (frame_index)
+        *frame_index = rd->cur_frame;
+    if (frame_count)
+        *frame_count = FRAME_COUNT;
+}
+
 bool raw_display_process_event(struct raw_display *rd,
                                struct raw_display_event *event)
 {
@@ -536,9 +736,21 @@ bool raw_display_process_event(struct raw_display *rd,
             event->type = RAW_DISPLAY_EVENT_unknown;
         break;
     }
+    case NSEventTypeMouseMoved: {
+        NSPoint location = [nevent locationInWindow];
+        event->type = RAW_DISPLAY_EVENT_mouse_move;
+        event->mouse.x = location.x;
+        event->mouse.y = rd->height - location.y;
+        break;
+    }
+    case NSEventTypeAppKitDefined: {
+        NSEventSubtype subtype = [nevent subtype];
+        printf("appkit subtype: %d\n", subtype);
+        event->type = RAW_DISPLAY_EVENT_unknown;
+        break;
+    }
     default:
         printf("unhandled event type: %lu\n", (unsigned long)[nevent type]);
-        event->type = RAW_DISPLAY_EVENT_unknown;
         break;
     }
     [rd->nsapp sendEvent:nevent];
@@ -598,6 +810,15 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
 uint8_t *raw_display_get_frame(const struct raw_display *rd)
 {
     return rd->frames[rd->cur_frame];
+}
+
+void raw_display_get_frame_details(const struct raw_display *rd,
+                                   int *frame_index, int *frame_count)
+{
+    if (frame_index)
+        *frame_index = rd->cur_frame;
+    if (frame_count)
+        *frame_count = FRAME_COUNT;
 }
 
 void raw_display_info(const struct raw_display *rd, int *width, int *height,
@@ -794,7 +1015,7 @@ char font8x8_basic[128][8] = {
 static void blit_char(uint8_t *rgb_start, int stride, char ch,
                       uint32_t colour)
 {
-    if (ch < 0 || ch >= 128)
+    if (ch < 0 || (int)ch >= 128)
         return;
 
     char *val = font8x8_basic[(uint8_t)ch];
@@ -896,8 +1117,9 @@ void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1,
 
     for (float wd = (line_width + 1) / 2;;) { /* pixel loop */
         raw_display_set_pixel(
-            rd, x0, y0, colour); // TODO: Antialiasing? -
-                                 // max(0,255*(abs(err-dx+dy)/ed-wd+1)));
+            rd, x0, y0,
+            colour); // TODO: Antialiasing? -
+                     // max(0,255*(abs(err-dx+dy)/ed-wd+1)));
         e2 = err;
         x2 = x0;
         if (2 * e2 >= -dx) { /* x step */
