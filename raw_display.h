@@ -41,6 +41,14 @@ enum raw_display_event_type {
     RAW_DISPLAY_EVENT_quit,
 };
 
+enum { // values for event.mouse.button
+    RAW_DISPLAY_MOUSE_left,
+    RAW_DISPLAY_MOUSE_right,
+    RAW_DISPLAY_MOUSE_middle,
+    RAW_DISPLAY_MOUSE_scroll_up,
+    RAW_DISPLAY_MOUSE_scroll_down,
+};
+
 /**
  * Details on the events that may be returned from
  * @ref raw_display_process_event
@@ -51,7 +59,7 @@ struct raw_display_event {
         struct {
             int x;      ///< X coordinate of the mouse event
             int y;      ///< Y coordinate of the mouse event
-            int button; ///< Which button was pressed
+            int button; ///< Which button was pressed - RAW_DISPLAY_MOUSE_xxxx
         } mouse;        ///< Used if the event is mouse_down or mouse_up
         struct {
             int key;

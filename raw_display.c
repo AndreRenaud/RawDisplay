@@ -584,7 +584,12 @@ void raw_display_shutdown(struct raw_display *rd)
 }
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_MACOS
 
+#define _DARWIN_C_SOURCE
+#ifndef NSIG
+#define NSIG __DARWIN_NSIG
+#endif
 #import <Cocoa/Cocoa.h>
+#include <sys/types.h>
 
 #define FRAME_COUNT 3
 struct raw_display {
@@ -718,7 +723,7 @@ bool raw_display_process_event(struct raw_display *rd,
     case NSEventTypeLeftMouseDown: {
         NSPoint location = [nevent locationInWindow];
         event->type = RAW_DISPLAY_EVENT_mouse_down;
-        event->mouse.button = 0;
+        event->mouse.button = RAW_DISPLAY_MOUSE_left;
         event->mouse.x = location.x;
         event->mouse.y = rd->height - location.y;
         // If the click is in the title bar, just ignore it
@@ -729,8 +734,8 @@ bool raw_display_process_event(struct raw_display *rd,
 
     case NSEventTypeLeftMouseUp: {
         NSPoint location = [nevent locationInWindow];
-        event->type = RAW_DISPLAY_EVENT_mouse_down;
-        event->mouse.button = 0;
+        event->type = RAW_DISPLAY_EVENT_mouse_up;
+        event->mouse.button = RAW_DISPLAY_MOUSE_left;
         event->mouse.x = location.x;
         event->mouse.y = rd->height - location.y;
         // If the click is in the title bar, just ignore it
@@ -750,6 +755,16 @@ bool raw_display_process_event(struct raw_display *rd,
         printf("appkit subtype: %d\n", subtype);
         event->type = RAW_DISPLAY_EVENT_unknown;
         break;
+    case NSEventTypeScrollWheel: {
+        NSPoint location = [nevent locationInWindow];
+        event->type = RAW_DISPLAY_EVENT_mouse_up;
+        event->mouse.x = location.x;
+        event->mouse.y = rd->height - location.y;
+        event->mouse.button = [nevent scrollingDeltaY] < 0
+                                  ? RAW_DISPLAY_MOUSE_scroll_up
+                                  : RAW_DISPLAY_MOUSE_scroll_down;
+        break;
+    }
     }
     default:
         printf("unhandled event type: %lu\n", (unsigned long)[nevent type]);
