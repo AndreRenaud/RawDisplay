@@ -221,6 +221,7 @@ bool raw_display_process_event(struct raw_display *rd,
 #include <fcntl.h>
 #include <linux/fb.h>
 #include <linux/input.h>
+#include <linux/kd.h>
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -248,7 +249,7 @@ struct raw_display {
 struct raw_display *raw_display_init(const char *title, int width, int height)
 {
     struct raw_display *rd;
-    int fd, inputdev;
+    int fd, inputdev, tty_fd;
     struct fb_var_screeninfo fvsi;
     struct fb_fix_screeninfo ffsi;
 
@@ -258,10 +259,22 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
         return NULL;
     }
 
+    if (ioctl(fd, FBIOBLANK, 0) < 0) {
+        fprintf(stderr, "Unable to unblank framebuffer: %s\n",
+                strerror(errno));
+    }
+
+    tty_fd = open("/dev/tty0", O_RDWR | O_SYNC);
+
+    if (tty_fd != -1) {
+        if (ioctl(tty_fd, KDSETMODE, KD_GRAPHICS) < 0)
+            fprintf(stderr, "Unable to go into graphics mode: %s\n",
+                    strerror(errno));
+    }
+
     inputdev = open("/dev/input/event5", O_RDONLY | O_NONBLOCK);
     if (inputdev < 0) {
         perror("inputdev");
-        return NULL;
     }
 
     if (ioctl(fd, FBIOGET_VSCREENINFO, &fvsi) < 0) {
@@ -305,6 +318,7 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
 void raw_display_shutdown(struct raw_display *rd)
 {
     close(rd->fbdev);
+if (rd->inputdev >= 0)
     close(rd->inputdev);
     munmap(rd->base, rd->smem_len);
     free(rd);
@@ -329,6 +343,9 @@ bool raw_display_process_event(struct raw_display *rd,
     struct pollfd pfd;
     int ready;
     struct input_event ev;
+
+if (rd->inputdev < 0)
+        return false;
 
     pfd.fd = rd->inputdev;
     pfd.events = POLLIN;
@@ -751,10 +768,11 @@ bool raw_display_process_event(struct raw_display *rd,
         break;
     }
     case NSEventTypeAppKitDefined: {
-        NSEventSubtype subtype = [nevent subtype];
-        printf("appkit subtype: %d\n", subtype);
+        //NSEventSubtype subtype = [nevent subtype];
+        //printf("appkit subtype: %d\n", subtype);
         event->type = RAW_DISPLAY_EVENT_unknown;
         break;
+    }
     case NSEventTypeScrollWheel: {
         NSPoint location = [nevent locationInWindow];
         event->type = RAW_DISPLAY_EVENT_mouse_up;
@@ -764,7 +782,6 @@ bool raw_display_process_event(struct raw_display *rd,
                                   ? RAW_DISPLAY_MOUSE_scroll_up
                                   : RAW_DISPLAY_MOUSE_scroll_down;
         break;
-    }
     }
     default:
         printf("unhandled event type: %lu\n", (unsigned long)[nevent type]);
