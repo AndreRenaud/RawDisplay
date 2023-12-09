@@ -1280,7 +1280,7 @@ void raw_display_draw_circle(struct raw_display *rd, int xc, int yc,
 void raw_display_set_pixel(struct raw_display *rd, int x, int y,
                            uint32_t colour)
 {
-    int width, height, stride;
+    int width = 0, height = 0, stride = 0;
     raw_display_info(rd, &width, &height, NULL, &stride);
     if (x < 0 || x >= width || y < 0 || y >= height)
         return;
