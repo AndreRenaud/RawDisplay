@@ -318,8 +318,8 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
 void raw_display_shutdown(struct raw_display *rd)
 {
     close(rd->fbdev);
-if (rd->inputdev >= 0)
-    close(rd->inputdev);
+    if (rd->inputdev >= 0)
+        close(rd->inputdev);
     munmap(rd->base, rd->smem_len);
     free(rd);
 }
@@ -344,7 +344,7 @@ bool raw_display_process_event(struct raw_display *rd,
     int ready;
     struct input_event ev;
 
-if (rd->inputdev < 0)
+    if (rd->inputdev < 0)
         return false;
 
     pfd.fd = rd->inputdev;
@@ -768,8 +768,8 @@ bool raw_display_process_event(struct raw_display *rd,
         break;
     }
     case NSEventTypeAppKitDefined: {
-        //NSEventSubtype subtype = [nevent subtype];
-        //printf("appkit subtype: %d\n", subtype);
+        // NSEventSubtype subtype = [nevent subtype];
+        // printf("appkit subtype: %d\n", subtype);
         event->type = RAW_DISPLAY_EVENT_unknown;
         break;
     }
