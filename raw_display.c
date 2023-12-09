@@ -597,6 +597,10 @@ struct raw_display {
     int stride;
     int cur_frame;
     uint8_t *frames[FRAME_COUNT];
+    CGDataProviderRef frame_data[FRAME_COUNT];
+    CGImageRef frame_images[FRAME_COUNT];
+    CGColorSpaceRef colorspace;
+    NSAutoreleasePool *pool;
 };
 
 @interface RawView : NSView {
@@ -610,24 +614,10 @@ static struct raw_display *rd_global = NULL;
 
 - (void)drawRect:(NSRect)rect
 {
-    int size = rd_global->stride * rd_global->height;
     int frame = (rd_global->cur_frame - 1 + FRAME_COUNT) % FRAME_COUNT;
     CGContextRef ctx = NSGraphicsContext.currentContext.CGContext;
 
-    CGColorSpaceRef colorspace = CGColorSpaceCreateDeviceRGB();
-    CGDataProviderRef provider = CGDataProviderCreateWithData(
-        NULL, rd_global->frames[frame], size, NULL);
-    CGImageRef image = CGImageCreate(
-        rd_global->width, rd_global->height, 8, 32, rd_global->stride,
-        colorspace, kCGBitmapByteOrder32Little | kCGImageAlphaNoneSkipFirst,
-        provider, NULL, true, kCGRenderingIntentDefault);
-
-    CGContextDrawImage(ctx, rect, image);
-
-    // Clean up
-    CGImageRelease(image);
-    CGColorSpaceRelease(colorspace);
-    CGDataProviderRelease(provider);
+    CGContextDrawImage(ctx, rect, rd_global->frame_images[frame]);
 }
 @end
 
@@ -667,9 +657,19 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
 
     [rd->window makeKeyAndOrderFront:NSApp];
 
+    rd->colorspace = CGColorSpaceCreateDeviceRGB();
+    int size = rd_global->stride * rd_global->height;
     for (int i = 0; i < FRAME_COUNT; i++) {
         rd->frames[i] = calloc(rd->height, rd->stride);
+        rd->frame_data[i] = CGDataProviderCreateWithData(
+            NULL, rd_global->frames[i], size, NULL);
+        rd->frame_images[i] = CGImageCreate(
+            rd_global->width, rd_global->height, 8, 32, rd_global->stride,
+            rd->colorspace,
+            kCGBitmapByteOrder32Little | kCGImageAlphaNoneSkipFirst,
+            rd->frame_data[i], NULL, true, kCGRenderingIntentDefault);
     }
+    rd->pool = [[NSAutoreleasePool alloc] init];
 
     return rd;
 }
@@ -704,10 +704,12 @@ void raw_display_get_frame_details(const struct raw_display *rd,
 bool raw_display_process_event(struct raw_display *rd,
                                struct raw_display_event *event)
 {
-    NSEvent *nevent = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                         untilDate:[NSDate distantPast]
-                                            inMode:NSDefaultRunLoopMode
-                                           dequeue:YES];
+    NSEvent *nevent = [rd->nsapp nextEventMatchingMask:NSEventMaskAny
+                                             untilDate:[NSDate distantPast]
+                                                inMode:NSDefaultRunLoopMode
+                                               dequeue:YES];
+    [rd->pool release];
+    rd->pool = [[NSAutoreleasePool alloc] init];
     if (!nevent)
         return false;
     memset(event, 0, sizeof(*event));
@@ -754,6 +756,7 @@ bool raw_display_process_event(struct raw_display *rd,
         break;
     }
     [rd->nsapp sendEvent:nevent];
+    [rd->nsapp updateWindows];
 
     return true;
 }
@@ -770,7 +773,10 @@ void raw_display_shutdown(struct raw_display *rd)
         return;
     for (int i = 0; i < FRAME_COUNT; i++) {
         free(rd->frames[i]);
+        CFRelease(rd->frame_data[i]);
+        CFRelease(rd->frame_images[i]);
     }
+    CFRelease(rd->colorspace);
     free(rd);
 }
 #elif CONFIG_RAW_DISPLAY == RAW_DISPLAY_MODE_DUMMY
@@ -1071,7 +1077,7 @@ void raw_display_draw_rectangle(struct raw_display *rd, int x0, int y0,
                                 int x1, int y1, uint32_t colour,
                                 int border_width)
 {
-    int width, height, stride;
+    int width = 0, height = 0, stride = 0;
     raw_display_info(rd, &width, &height, NULL, &stride);
 
     if (x0 > x1) {
