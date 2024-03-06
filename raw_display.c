@@ -636,10 +636,13 @@ static struct raw_display *rd_global = NULL;
 
 - (void)drawRect:(NSRect)rect
 {
-    int frame = (rd_global->cur_frame - 1 + FRAME_COUNT) % FRAME_COUNT;
+    struct raw_display *rd = rd_global;
+    int frame = (rd->cur_frame - 1 + FRAME_COUNT) % FRAME_COUNT;
     CGContextRef ctx = NSGraphicsContext.currentContext.CGContext;
 
-    CGContextDrawImage(ctx, rect, rd_global->frame_images[frame]);
+    NSRect drawRect = NSMakeRect(0, 0, rd->width, rd->height);
+
+    CGContextDrawImage(ctx, drawRect, rd->frame_images[frame]);
 }
 @end
 
@@ -662,12 +665,13 @@ struct raw_display *raw_display_init(const char *title, int width, int height)
     rd->bpp = 32;
 
     NSRect frame = NSMakeRect(0, 0, width, height);
-    rd->window =
-        [[[NSWindow alloc] initWithContentRect:frame
-                                     styleMask:NSWindowStyleMaskClosable |
-                                               NSWindowStyleMaskTitled
-                                       backing:NSBackingStoreBuffered
-                                         defer:NO] autorelease];
+    NSUInteger style_mask = NSWindowStyleMaskClosable |
+                            NSWindowStyleMaskTitled |
+                            NSWindowStyleMaskMiniaturizable;
+    rd->window = [[[NSWindow alloc] initWithContentRect:frame
+                                              styleMask:style_mask
+                                                backing:NSBackingStoreBuffered
+                                                  defer:NO] autorelease];
     [rd->window setAcceptsMouseMovedEvents:YES];
 
     NSString *nstitle = [[NSString alloc] initWithUTF8String:title];
