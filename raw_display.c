@@ -1630,7 +1630,7 @@ void raw_display_draw_circle(struct raw_display *rd, int xc, int yc,
 
 static uint16_t colour_to_16(uint32_t colour)
 {
-    return ((colour & 0xf10000) >> 16) | ((colour & 0x00fc00) >> 5) |
+    return ((colour & 0xf10000) >> 8) | ((colour & 0x00fc00) >> 5) |
            ((colour & 0x0000ff) >> 3);
 }
 
