@@ -147,14 +147,16 @@ void raw_display_shutdown(struct raw_display *rd);
  * Displays an ASCII string on the screen.
  * Note: Only ASCII characters 0 - 127 are supported
  * @param rd Raw display to draw the rectangle on
+ * @param size Height of the font (only 8 & 16 are currently supported)
  * @param x X offset of the pixel at the top-left of the string
  * @param y Y offset of the pixel at the top-left of the string
  * @param string String to display
  * @param colour Colour to draw the string as
- * @return < 0 on failure, >= 0 on success
+ * @return < 0 on failure, >= 0 on success (number of horizontal pixels
+ * written)
  */
-int raw_display_draw_string(struct raw_display *rd, int x, int y,
-                            char *string, uint32_t colour);
+int raw_display_draw_string(struct raw_display *rd, int size, int x, int y,
+                            const char *string, uint32_t colour);
 
 /**
  * Draw a rectangle on the screen

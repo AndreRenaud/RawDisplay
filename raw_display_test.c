@@ -52,8 +52,8 @@ int main(int argc, char **argv)
 
 	int clock_x = 400;
 	int clock_y = 400;
-	int text_x = 0;
-	int text_y = 0;
+	int text_x = width / 2;
+	int text_y = height / 2;
 
 	time_t start = time(NULL);
 	for (int i = 0; i < frame_count; i++) {
