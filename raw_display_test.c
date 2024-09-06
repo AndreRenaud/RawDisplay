@@ -80,8 +80,8 @@ int main(int argc, char **argv)
 
 			sprintf(buffer, "%d fps=%d", i % 1000, fps);
 
-			raw_display_draw_string(rd, 0, 0, buffer, 0xff00ff00);
-			raw_display_draw_string(rd, text_x, text_y, "What is this?", 0xffffffff);
+			raw_display_draw_string(rd, 8, 0, 0, buffer, 0xff00ff00);
+			raw_display_draw_string(rd, 8, text_x, text_y, "What is this?", 0xffffffff);
 			raw_display_draw_rectangle(rd, 100, 100, 150, 200, 0xff << (i % 24), -1);
 			raw_display_draw_line(rd, 100, 100, 150, 200, 0xffffffff, 10);
 

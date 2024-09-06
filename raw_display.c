@@ -1437,7 +1437,7 @@ static int blit_char(struct raw_display *rd, int size, int x0, int y0,
                 }
             }
         }
-        size = 12; // The 16x16 font is only 11 pixels wide
+        size = 12; // The 16x16 font is only 12 pixels wide
     }
     return size;
 }
@@ -1445,11 +1445,11 @@ static int blit_char(struct raw_display *rd, int size, int x0, int y0,
 int raw_display_draw_string(struct raw_display *rd, int size, int x, int y,
                             const char *string, uint32_t colour)
 {
-    int width, height, stride, bpp;
+    int width = 0, height = 0;
     int x_orig = x;
 
-    raw_display_info(rd, &width, &height, &bpp, &stride);
-    if (y < 0 || y >= height - 8 || x >= width)
+    raw_display_info(rd, &width, &height, NULL, NULL);
+    if (y < 0 || y >= height - size || x >= width)
         return -EINVAL;
     for (; string && *string; string++) {
         x += blit_char(rd, size, x, y, *string, colour);
@@ -1542,8 +1542,7 @@ void raw_display_draw_line(struct raw_display *rd, int x0, int y0, int x1,
 static inline void xLine(struct raw_display *rd, int x0, int x1, int y,
                          uint32_t colour)
 {
-    uint8_t *rgb = raw_display_get_frame(rd);
-    int width, height;
+    int width = 0, height = 0;
     raw_display_info(rd, &width, &height, NULL, NULL);
     // Clamp all the coordinates
     if (x1 < x0) {
