@@ -1646,14 +1646,16 @@ void raw_display_set_pixel(struct raw_display *rd, int x, int y,
         return;
     uint8_t *rgb_start = (rgb + y * stride + x * bpp / 8);
     switch (bpp) {
-    case 32:
+    case 32: {
         uint32_t *pos32 = (uint32_t *)rgb_start;
         *pos32 = colour;
         break;
-    case 16:
+    }
+    case 16: {
         uint16_t *pos16 = (uint16_t *)rgb_start;
         *pos16 = colour_to_16(colour);
         break;
+    }
     }
 }
 
